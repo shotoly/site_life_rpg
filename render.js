@@ -1,3 +1,5 @@
+// --- Fichier : render.js (Mis à jour) ---
+
 async function completeQuest(identifier, xp) {
     
     // Nettoyage de la chaîne XP pour retirer les espaces et garantir la conversion numérique
@@ -177,4 +179,122 @@ async function loadMilestones() {
         console.error('Erreur lors du chargement des paliers:', error);
         listElement.innerHTML = '<p>Erreur de connexion au Registre du Destin (Paliers).</p>';
     }
+}
+
+async function loadArcs() {
+    const listElement = document.getElementById('arc-list-manager');
+    listElement.innerHTML = '<p>Chargement des Arcs...</p>';
+
+    try {
+        const response = await fetch(ARCS_API_URL);
+        const data = await response.json();
+
+        if (Array.isArray(data) && data.length > 0) {
+            
+            // --- DÉBUT DU PATCH ---
+            // 1. Stocke les données globalement pour le formulaire de création
+            globalArcsData = data; 
+            // 2. APPELLE LA FONCTION pour remplir le <select> !
+            populateArcOptions(globalArcsData);
+            // --- FIN DU PATCH ---
+
+            listElement.innerHTML = ''; // Nettoie la liste de *gestion*
+
+            // Le reste de ta fonction continue pour remplir la liste de gestion...
+            data.forEach(arc => {
+                const arcID = arc['ID Arc'];
+                const arcName = arc['Nom Modifiable'];
+
+                const li = document.createElement('li');
+                
+                // Crée les éléments
+                const idLabel = document.createElement('span');
+                idLabel.textContent = `[${arcID}]`;
+                
+                const nameLabel = document.createElement('span');
+                nameLabel.className = 'arc-name';
+                nameLabel.textContent = arcName;
+                
+                const inputField = document.createElement('input');
+                inputField.type = 'text';
+                inputField.value = arcName;
+                inputField.style.display = 'none'; // Caché par défaut
+
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Modifier';
+                
+                const saveButton = document.createElement('button');
+                saveButton.textContent = 'Sauver';
+                saveButton.style.display = 'none'; // Caché par défaut
+
+                // Logique d'édition
+                editButton.onclick = () => {
+                    nameLabel.style.display = 'none';
+                    editButton.style.display = 'none';
+                    inputField.style.display = 'block';
+                    saveButton.style.display = 'block';
+                };
+
+                // Logique de sauvegarde
+                saveButton.onclick = async () => {
+                    const newName = inputField.value;
+                    const success = await updateArcName(arcID, newName);
+                    
+                    if (success) {
+                        nameLabel.textContent = newName;
+                        nameLabel.style.display = 'block';
+                        editButton.style.display = 'block';
+                        inputField.style.display = 'none';
+                        saveButton.style.display = 'none';
+                        // Idéalement, il faudrait aussi recharger les Quêtes 
+                        // pour mettre à jour les dropdowns (si on en avait).
+                    }
+                };
+
+                // Ajoute les éléments au DOM
+                li.appendChild(idLabel);
+                li.appendChild(nameLabel);
+                li.appendChild(inputField);
+                li.appendChild(editButton);
+                li.appendChild(saveButton);
+                listElement.appendChild(li);
+            });
+        } else {
+            listElement.innerHTML = '<p>Aucun Arc Narratif trouvé.</p>';
+            // S'il n'y a pas d'arcs, on le dit aussi dans le dropdown
+            populateArcOptions([]); 
+        }
+    } catch (error) {
+        console.error('Erreur lors du chargement des Arcs:', error);
+        listElement.innerHTML = '<p>Erreur de connexion (Arcs).</p>';
+    }
+}
+
+/**
+ * Remplit la liste déroulante des Arcs dans le formulaire de création.
+ * @param {Array} arcs - Le tableau des objets Arcs (venant de globalArcsData)
+ */
+function populateArcOptions(arcs) {
+    const selectElement = document.getElementById('quest-arc-select');
+    
+    // Vérification de sécurité
+    if (!selectElement) {
+        console.warn("Élément 'quest-arc-select' non trouvé pour la population des arcs.");
+        return;
+    }
+
+    selectElement.innerHTML = '<option value="">-- Choisir un Arc --</option>'; // Placeholder
+
+    arcs.forEach(arc => {
+        // On se base sur les colonnes de "DataBase - Arcs Narratifs.csv"
+        const idArc = arc["ID Arc"]; // ex: "Arc II"
+        const nomArc = arc["Nom Modifiable"]; // ex: "🩻 Santé"
+        
+        if (idArc && nomArc) {
+            const option = document.createElement('option');
+            option.value = idArc; // La valeur stockée sera l'ID (ex: "Arc II")
+            option.textContent = nomArc; // Le texte affiché sera le nom (ex: "🩻 Santé")
+            selectElement.appendChild(option);
+        }
+    });
 }

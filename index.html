@@ -108,11 +108,82 @@
             <div id="player-stats">
             </div>
         </div>
+        <div class="quest-creator-container">
+            <h3><i class="fas fa-scroll"></i> Créer une Nouvelle Quête</h3>
+
+            <form id="form-create-quest">
+
+                <div class="form-group">
+                    <label for="quest-name-input">Description de la quête :</label>
+                    <input type="text" id="quest-name-input" placeholder="Ex: Lire 30 pages..." required>
+                </div>
+
+                <div class="form-group">
+                    <label for="quest-arc-select">Arc Narratif Associé :</label>
+                    <select id="quest-arc-select" required>
+                        <option value="">Chargement des arcs...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="quest-frequency-select">Fréquence :</label>
+                    <select id="quest-frequency-select" required>
+                        <option value="Unique">Unique</option>
+                        <option value="Journalière">Journalière</option>
+                        <option value="Hebdomadaire">Hebdomadaire</option>
+                        <option value="Mensuelle">Mensuelle</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="quest-intensity-select">Intensité (Difficulté) :</label>
+                    <select id="quest-intensity-select" required>
+                        <option value="1">Faible (1)</option>
+                        <option value="2">Moyenne (2)</option>
+                        <option value="3">Élevée (3)</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-create-quest">
+                    <i class="fas fa-plus-circle"></i> Ajouter la Quête
+                </button>
+            </form>
+        </div>
 
         <div id="quests" class="tab-content">
             <h2>Gestion des Quêtes</h2>
             <div id="quests-list">
             </div>
+            <hr>
+            <h3>Gestion des Arcs Narratifs</h3>
+            <p>Modifiez les noms de vos catégories de vie.</p>
+            <ul id="arc-list-manager" class="arc-manager">
+            </ul>
+
+            <style>
+                .arc-manager li {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 8px;
+                    background-color: #3b3b64;
+                    margin-bottom: 5px;
+                    border-radius: 4px;
+                }
+
+                .arc-manager input {
+                    flex-grow: 1;
+                    margin: 0 10px;
+                    background: #e5e5e5;
+                    color: #1a1a2e;
+                    border: none;
+                    padding: 5px;
+                }
+
+                .arc-manager .arc-name {
+                    font-weight: bold;
+                }
+            </style>
         </div>
 
         <div id="milestones" class="tab-content">
