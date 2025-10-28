@@ -1,5 +1,7 @@
-// --- main.js ---
+// --- main.js (Corrigé) ---
 
+// [CORRECTION 1] Déclare la variable globale pour les Arcs
+let globalArcsData = [];
 
 function setupTabs() {
     const buttons = document.querySelectorAll('.tab-button');
@@ -19,9 +21,7 @@ function setupTabs() {
         });
     });
 }
-// --- Ajout dans main.js (dans la section d'initialisation) ---
 
-// --- Ajout dans main.js (dans la section d'initialisation) ---
 
 const form = document.getElementById('form-create-quest');
 form.addEventListener('submit', handleCreateQuestSubmit);
@@ -37,8 +37,7 @@ async function handleCreateQuestSubmit(event) {
     const frequency = document.getElementById('quest-frequency-select').value;
     const intensity = document.getElementById('quest-intensity-select').value;
 
-    // 2. Retrouver le nom de l'Arc (ex: "🩻 Santé") à partir de l'ID (ex: "Arc II")
-    // (Nous avons besoin des DEUX pour remplir la feuille "Répertoire des Quêtes")
+    // 2. Retrouver le nom de l'Arc
     const selectedArc = globalArcsData.find(a => a["ID Arc"] === arcId);
     
     if (!selectedArc) {
@@ -46,16 +45,15 @@ async function handleCreateQuestSubmit(event) {
         return;
     }
     
-    const arcName = selectedArc["Nom Modifiable"]; // ex: "🩻 Santé"
+    const arcName = selectedArc["Nom Modifiable"]; 
 
-    // 3. Construire l'objet de données de la quête (doit correspondre aux colonnes)
+    // 3. Construire l'objet de données de la quête
     const questData = {
         "Quete": queteName,
         "Nom de l'Arc": arcId,
         "Arc": arcName,
         "Fréquence": frequency,
-        "Intensité": parseInt(intensity, 10) // Convertir en nombre
-        // Le Statut (false) et l'XP (0) sont gérés par la fonction createQuest
+        "Intensité": parseInt(intensity, 10) 
     };
 
     // 4. Appeler l'API
@@ -65,26 +63,69 @@ async function handleCreateQuestSubmit(event) {
     if (success) {
         form.reset(); // Vider le formulaire
         
-        // Recharger les données des quêtes pour voir la nouvelle quête !
-        // (J'assume que tu as une fonction pour recharger juste les quêtes)
-        await loadQuestsData(); 
-        // (Si tu n'as pas 'loadQuestsData', tu peux utiliser 'loadData' 
-        // ou la fonction qui rafraîchit les listes de quêtes)
+        // [CORRECTION 3] Correction du nom de la fonction (loadQuestsData -> loadQuests)
+        await loadQuests(); 
     }
 }
 
-function initApp() {
+const formMilestone = document.getElementById('form-create-milestone');
+if (formMilestone) {
+    formMilestone.addEventListener('submit', handleCreateMilestoneSubmit);
+} else {
+    console.warn("Le formulaire 'form-create-milestone' n'a pas été trouvé.");
+}
+
+
+async function handleCreateMilestoneSubmit(event) {
+    event.preventDefault(); 
+    console.log("Soumission du formulaire de création de Palier...");
+
+    // 1. Récupérer les valeurs du formulaire
+    const desc = document.getElementById('milestone-desc-input').value;
+    const arcId = document.getElementById('milestone-arc-select').value;
+    const difficulty = document.getElementById('milestone-difficulty-select').value;
+    const xp = document.getElementById('milestone-xp-input').value;
+
+    if (!globalArcsData) {
+        alert("Erreur : Les données des Arcs ne sont pas prêtes.");
+        return;
+    }
+
+    // 3. Construire l'objet de données
+    const milestoneData = {
+        "Arc Associé": arcId,
+        "Description": desc,
+        "Difficulté": difficulty,
+        "XP Obtenue (Fixe)": parseInt(xp, 10)
+    };
+
+    // 4. Appeler l'API
+    const success = await createMilestone(milestoneData);
+
+    // 5. Réinitialiser et recharger
+    if (success) {
+        formMilestone.reset(); // Vider le formulaire
+        await loadMilestones(); 
+    }
+}
+
+// [CORRECTION 2] Rendre initApp 'async' pour contrôler l'ordre
+async function initApp() {
     console.log("Life RPG démarré. Chargement des données du Registre du Destin...");
     
     // 1. Initialise la logique des onglets
     setupTabs(); 
     
     // 2. Déclenchement initial des fonctions
-    // Assurez-vous que les fonctions loadXxx sont dans render.js
+    // On doit 'await' les Arcs EN PREMIER, car les Paliers en dépendent.
+    
+    await loadArcs(); // Charge les Arcs (et remplit 'globalArcsData')
+
+    // Maintenant que globalArcsData existe, on peut charger le reste
     loadPlayerStats();
     loadQuests();
-    loadMilestones();
-    loadArcs();
+    loadMilestones(); 
 }
 
+// Lancement de l'application
 initApp();

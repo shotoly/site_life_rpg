@@ -1,5 +1,4 @@
 // --- Fichier : render.js (Mis à jour) ---
-
 async function completeQuest(identifier, xp) {
     
     // Nettoyage de la chaîne XP pour retirer les espaces et garantir la conversion numérique
@@ -270,31 +269,184 @@ async function loadArcs() {
     }
 }
 
+
 /**
- * Remplit la liste déroulante des Arcs dans le formulaire de création.
+ * Remplit TOUTES les listes déroulantes des Arcs.
  * @param {Array} arcs - Le tableau des objets Arcs (venant de globalArcsData)
  */
 function populateArcOptions(arcs) {
-    const selectElement = document.getElementById('quest-arc-select');
     
-    // Vérification de sécurité
-    if (!selectElement) {
-        console.warn("Élément 'quest-arc-select' non trouvé pour la population des arcs.");
-        return;
-    }
+    const questSelect = document.getElementById('quest-arc-select');
+    const milestoneSelect = document.getElementById('milestone-arc-select');
+    
+    const selects = [questSelect, milestoneSelect];
 
-    selectElement.innerHTML = '<option value="">-- Choisir un Arc --</option>'; // Placeholder
-
-    arcs.forEach(arc => {
-        // On se base sur les colonnes de "DataBase - Arcs Narratifs.csv"
-        const idArc = arc["ID Arc"]; // ex: "Arc II"
-        const nomArc = arc["Nom Modifiable"]; // ex: "🩻 Santé"
-        
-        if (idArc && nomArc) {
-            const option = document.createElement('option');
-            option.value = idArc; // La valeur stockée sera l'ID (ex: "Arc II")
-            option.textContent = nomArc; // Le texte affiché sera le nom (ex: "🩻 Santé")
-            selectElement.appendChild(option);
+    selects.forEach(selectElement => {
+        if (!selectElement) {
+            // Pas grave si l'un n'existe pas, on continue
+            console.warn("Un élément <select> d'Arc n'a pas été trouvé.");
+            return;
         }
+
+        selectElement.innerHTML = '<option value="">-- Choisir un Arc --</option>'; 
+
+        arcs.forEach(arc => {
+            const idArc = arc["ID Arc"];
+            const nomArc = arc["Nom Modifiable"];
+            
+            if (idArc && nomArc) {
+                const option = document.createElement('option');
+                option.value = idArc; 
+                option.textContent = nomArc; 
+                selectElement.appendChild(option);
+            }
+        });
     });
+}
+
+
+
+/**
+ * [VERSION MISE À JOUR]
+ * Charge les Paliers et les affiche groupés par Arc,
+ * avec des boutons de complétion fonctionnels.
+ */
+async function loadMilestones() {
+    const listElement = document.getElementById('milestones-list');
+    listElement.innerHTML = '<p>Chargement du Sanctuaire des Paliers...</p>';
+    
+    try {
+        const response = await fetch(PALIERS_API_URL); // Défini dans config.js
+        const data = await response.json(); 
+
+        if (!Array.isArray(data) || data.length === 0) {
+            listElement.innerHTML = '<p>Aucun Palier majeur trouvé.</p>';
+            return;
+        }
+
+        // --- Logique de Groupement ---
+        const milestonesByArc = {};
+        data.forEach(palier => {
+            const arcName = palier['Arc Associé'] || 'Non assigné'; // Clé du CSV
+            if (!milestonesByArc[arcName]) {
+                milestonesByArc[arcName] = [];
+            }
+            milestonesByArc[arcName].push(palier);
+        });
+        
+        listElement.innerHTML = ''; // Nettoie le conteneur
+
+        // --- Logique de Rendu (Refactorisée) ---
+        for (const arcName in milestonesByArc) {
+            
+            const arcGroup = document.createElement('div');
+            arcGroup.className = 'milestone-arc-group';
+            
+            // On cherche le nom lisible de l'Arc (ex: "🩻 Santé")
+            const arcDetails = globalArcsData.find(a => a["ID Arc"] === arcName);
+            const arcDisplayName = arcDetails ? arcDetails["Nom Modifiable"] : arcName;
+            
+            arcGroup.innerHTML = `<h3>${arcDisplayName}</h3>`;
+
+            const arcPaliersList = document.createElement('div');
+
+            // Tri : Paliers non atteints en premier
+            const sortedPaliers = milestonesByArc[arcName].sort((a, b) => {
+                const aDone = a['Atteint?'] === 'VRAI' || a['Atteint?'] === 'TRUE';
+                const bDone = b['Atteint?'] === 'VRAI' || b['Atteint?'] === 'TRUE';
+                return aDone - bDone; // false (0) vient avant true (1)
+            });
+
+            sortedPaliers.forEach(palier => {
+                const isAchieved = palier['Atteint?'] === 'VRAI' || palier['Atteint?'] === 'TRUE';
+                const description = palier['Description'] || 'Palier sans nom';
+                const xpFixed = palier['XP Obtenue (Fixe)'] || 0;
+                const difficulte = palier['Difficulté'] || 'N/A';
+
+                // 1. Créer l'item principal
+                const palierItem = document.createElement('div');
+                palierItem.className = 'quest-item';
+                palierItem.style.backgroundColor = isAchieved ? '#4d7c0f' : '#6b4d3b';
+                // Ajout de l'attribut pour la sélection (utilisé dans completeMilestone)
+                palierItem.setAttribute('data-milestone-id', description);
+
+                // 2. Créer l'info
+                const info = document.createElement('div');
+                info.className = 'quest-info';
+                info.innerHTML = `<strong>[${difficulte}]</strong> ${description}`;
+
+                // 3. Créer le label d'XP
+                const xpLabel = document.createElement('span');
+                xpLabel.className = 'xp-label';
+                xpLabel.style.backgroundColor = '#f59e0b';
+                xpLabel.textContent = `+${xpFixed} XP`;
+
+                // 4. Créer le bouton
+                const completeButton = document.createElement('button');
+                completeButton.style.marginLeft = '10px';
+                completeButton.textContent = isAchieved ? 'DÉBLOQUÉ' : 'Valider';
+                completeButton.disabled = isAchieved;
+                
+                // C'est ici que la magie opère !
+                if (!isAchieved) {
+                    completeButton.onclick = () => {
+                        completeMilestone(description, xpFixed);
+                    };
+                }
+
+                // 5. Assembler
+                palierItem.appendChild(info);
+                palierItem.appendChild(xpLabel);
+                palierItem.appendChild(completeButton);
+                arcPaliersList.appendChild(palierItem);
+            });
+
+            arcGroup.appendChild(arcPaliersList);
+            listElement.appendChild(arcGroup);
+        }
+
+    } catch (error) {
+        console.error('Erreur lors du chargement des paliers:', error);
+        listElement.innerHTML = '<p>Erreur de connexion au Registre du Destin (Paliers).</p>';
+    }
+}
+
+
+// --- Ajout dans render.js ---
+
+/**
+ * Gère le processus de complétion d'un Palier.
+ * @param {string} description - L'identifiant du Palier (sa description)
+ * @param {number} xp - L'XP fixe à gagner
+ */
+async function completeMilestone(description, xp) {
+    
+    const xpNumeric = parseInt(xp) || 0;
+
+    // 1. Demander confirmation
+    if (confirm(`As-tu vraiment atteint le Palier majeur : "${description}" ?\n\n(Gain unique : ${xpNumeric} XP)`)) {
+        
+        // 2. Appeler l'API pour marquer comme "Atteint?" = TRUE
+        const success = await markMilestoneAsDone(description);
+
+        if (success) {
+            // 3. Recharger les stats du joueur (pour la barre d'XP)
+            await loadPlayerStats();
+
+            // 4. Mettre à jour l'interface immédiatement
+            alert(`Triomphe ! Palier atteint : "${description}" ! +${xpNumeric} XP !`);
+            
+            // Cible l'élément grâce à un attribut que nous allons ajouter (voir Mission 3)
+            const item = document.querySelector(`[data-milestone-id="${description}"]`);
+            if (item) {
+                // Change la couleur et désactive le bouton
+                item.style.backgroundColor = '#4d7c0f'; // Couleur "Atteint"
+                const button = item.querySelector('button');
+                button.disabled = true;
+                button.textContent = 'DÉBLOQUÉ';
+            }
+        } else {
+            alert("Échec de la validation du Palier. L'API a peut-être échoué (voir console).");
+        }
+    }
 }
