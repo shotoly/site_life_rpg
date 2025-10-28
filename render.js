@@ -64,37 +64,35 @@ async function loadPlayerStats() {
 }
 async function loadQuests() {
     const listElement = document.getElementById('quests-list');
-    // NOTE: loadingMessage a été retiré de la nouvelle structure HTML.
-    // L'élément est ici commenté pour éviter le crash.
-
-    // Affiche un message de chargement tant que le fetch n'a pas réussi
     listElement.innerHTML = '<p>Chargement des quêtes...</p>'; 
 
     try {
-        const response = await fetch(QUOTES_API_URL);
+        const response = await fetch(QUOTES_API_URL); // Note: Tu l'as appelé QUOTES_API_URL
         if (!response.ok) {
             throw new Error(`Erreur HTTP! Statut: ${response.status}`);
         }
 
         const data = await response.json();
-        console.log("Données Quêtes reçues :", data); 
-        console.log("Nombre d'éléments :", data.length);
         
         if (Array.isArray(data)) {
-            
-            // Nettoie l'élément de la quête (plus besoin de loadingMessage.style.display)
             listElement.innerHTML = ''; 
 
             if (data.length === 0) {
                 listElement.innerHTML = '<p>Aucune quête trouvée. Ajoutez des entrées !</p>';
                 return;
             }
+            
+            // Tri : non-faites (FALSE) en premier
+            const sortedQuests = data.sort((a, b) => {
+                const aDone = a['Statut'] === 'TRUE' || a['Statut'] === 'VRAI' || a['Statut'] === true;
+                const bDone = b['Statut'] === 'TRUE' || b['Statut'] === 'VRAI' || b['Statut'] === true;
+                return aDone - bDone; // false (0) vient avant true (1)
+            });
 
-            data.forEach(quest => {
-                // Clés basées sur le format de votre CSV
+            sortedQuests.forEach(quest => {
                 const questIdentifier = quest['Quete']; 
                 const xpReward = quest['XP / Quête'];
-                const isDone = quest['Statut'] === 'TRUE' || quest['Statut'] === 'VRAI' || quest['Statut'] === true; // Vérifie le statut
+                const isDone = quest['Statut'] === 'TRUE' || quest['Statut'] === 'VRAI' || quest['Statut'] === true;
 
                 const questItem = document.createElement('div');
                 questItem.className = 'quest-item';
@@ -105,7 +103,6 @@ async function loadQuests() {
 
                 const questInfo = document.createElement('div');
                 questInfo.className = 'quest-info';
-                
                 questInfo.innerHTML = `
                 <strong>[${quest['Arc'] || 'N/A'}]</strong> ${quest['Quete'] || 'Quête sans nom'} 
                 <br>
@@ -115,6 +112,11 @@ async function loadQuests() {
                 xpLabel.className = 'xp-label';
                 xpLabel.textContent = `+${xpReward || 0} XP`;
 
+                // --- [MISE À JOUR] ---
+                // Conteneur pour les boutons
+                const questActions = document.createElement('div');
+                questActions.className = 'quest-actions'; // (Tu peux styliser .quest-actions en flex)
+
                 const completeButton = document.createElement('button');
                 completeButton.textContent = isDone ? 'Accomplie !' : 'Accomplir';
                 completeButton.disabled = isDone;
@@ -122,9 +124,25 @@ async function loadQuests() {
                     completeQuest(questIdentifier, xpReward);
                 };
 
+                // Ajout du bouton POUBELLE
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = '🗑️'; // Ou 'Suppr.'
+                deleteButton.className = 'delete-btn'; // Pour le style
+                deleteButton.style.backgroundColor = '#a83232';
+                deleteButton.onclick = () => {
+                    handleDeleteQuest(questIdentifier);
+                };
+                // --- [FIN MISE À JOUR] ---
+
+
                 questItem.appendChild(questInfo);
                 questItem.appendChild(xpLabel);
-                questItem.appendChild(completeButton);
+                
+                // Ajout des boutons au conteneur d'actions
+                questActions.appendChild(completeButton);
+                questActions.appendChild(deleteButton);
+                questItem.appendChild(questActions); // Ajout du conteneur
+                
                 listElement.appendChild(questItem);
             });
         } else {
@@ -132,46 +150,113 @@ async function loadQuests() {
         }
 
     } catch (error) {
-        // Affiche l'erreur dans l'élément listElement
         listElement.innerHTML = '<p>Erreur: Impossible de contacter le Registre du Destin (Quêtes). Vérifiez la console.</p>'; 
         console.error('Erreur lors du chargement des quêtes:', error);
     }
+
 }
+
+
 async function loadMilestones() {
     const listElement = document.getElementById('milestones-list');
+    listElement.innerHTML = '<p>Chargement du Sanctuaire des Paliers...</p>';
     
     try {
         const response = await fetch(PALIERS_API_URL);
         const data = await response.json(); 
 
-        if (Array.isArray(data) && data.length > 0) {
-            listElement.innerHTML = '';
+        if (!Array.isArray(data) || data.length === 0) {
+            listElement.innerHTML = '<p>Aucun Palier majeur trouvé.</p>';
+            return;
+        }
 
-            data.forEach(palier => {
-                // Clé basée sur la feuille Sanctuaire des Paliers
-                const isAchieved = palier['Atteint?'] === 'VRAI' || palier['Atteint?'] === 'TRUE'; 
+        const milestonesByArc = {};
+        data.forEach(palier => {
+            const arcName = palier['Arc Associé'] || 'Non assigné';
+            if (!milestonesByArc[arcName]) {
+                milestonesByArc[arcName] = [];
+            }
+            milestonesByArc[arcName].push(palier);
+        });
+        
+        listElement.innerHTML = ''; 
+
+        for (const arcName in milestonesByArc) {
+            
+            const arcGroup = document.createElement('div');
+            arcGroup.className = 'milestone-arc-group';
+            
+            const arcDetails = globalArcsData.find(a => a["ID Arc"] === arcName);
+            const arcDisplayName = arcDetails ? arcDetails["Nom Modifiable"] : arcName;
+            
+            arcGroup.innerHTML = `<h3>${arcDisplayName}</h3>`;
+
+            const arcPaliersList = document.createElement('div');
+
+            const sortedPaliers = milestonesByArc[arcName].sort((a, b) => {
+                const aDone = a['Atteint?'] === 'VRAI' || a['Atteint?'] === 'TRUE';
+                const bDone = b['Atteint?'] === 'VRAI' || b['Atteint?'] === 'TRUE';
+                return aDone - bDone;
+            });
+
+            sortedPaliers.forEach(palier => {
+                const isAchieved = palier['Atteint?'] === 'VRAI' || palier['Atteint?'] === 'TRUE';
+                const description = palier['Description'] || 'Palier sans nom';
+                const xpFixed = palier['XP Obtenue (Fixe)'] || 0;
+                const difficulte = palier['Difficulté'] || 'N/A';
 
                 const palierItem = document.createElement('div');
                 palierItem.className = 'quest-item';
-                palierItem.style.backgroundColor = isAchieved ? '#4d7c0f' : '#6b4d3b'; 
+                palierItem.style.backgroundColor = isAchieved ? '#4d7c0f' : '#6b4d3b';
+                palierItem.setAttribute('data-milestone-id', description);
 
-                palierItem.innerHTML = `
-                    <div class="quest-info">
-                        <strong>[${palier['Arc Associé'] || 'N/A'}]</strong> ${palier['Description'] || 'Palier sans nom'}
-                        <br>
-                        <small>Difficulté: ${palier['Difficulté'] || 'N/A'}</small>
-                    </div>
-                    <span class="xp-label" style="background-color: #f59e0b;">
-                        +${palier['XP Obtenue (Fixe)'] || 0} XP (Palier)
-                    </span>
-                    <button disabled style="margin-left: 10px;">${isAchieved ? 'DÉBLOQUÉ' : 'EN COURS'}</button>
-                `;
+                const info = document.createElement('div');
+                info.className = 'quest-info';
+                info.innerHTML = `<strong>[${difficulte}]</strong> ${description}`;
 
-                listElement.appendChild(palierItem);
+                const xpLabel = document.createElement('span');
+                xpLabel.className = 'xp-label';
+                xpLabel.style.backgroundColor = '#f59e0b';
+                xpLabel.textContent = `+${xpFixed} XP`;
+
+                // --- [MISE À JOUR] ---
+                const palierActions = document.createElement('div');
+                palierActions.className = 'quest-actions';
+
+                const completeButton = document.createElement('button');
+                completeButton.style.marginLeft = '10px';
+                completeButton.textContent = isAchieved ? 'DÉBLOQUÉ' : 'Valider';
+                completeButton.disabled = isAchieved;
+                
+                if (!isAchieved) {
+                    completeButton.onclick = () => {
+                        completeMilestone(description, xpFixed);
+                    };
+                }
+
+                // Ajout du bouton POUBELLE
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = '🗑️';
+                deleteButton.className = 'delete-btn';
+                deleteButton.style.backgroundColor = '#a83232';
+                deleteButton.onclick = () => {
+                    handleDeleteMilestone(description);
+                };
+                // --- [FIN MISE À JOUR] ---
+
+                palierItem.appendChild(info);
+                palierItem.appendChild(xpLabel);
+                
+                // Ajout des boutons au conteneur
+                palierActions.appendChild(completeButton);
+                palierActions.appendChild(deleteButton);
+                palierItem.appendChild(palierActions);
+                
+                arcPaliersList.appendChild(palierItem);
             });
 
-        } else {
-            listElement.innerHTML = '<p>Aucun Palier majeur trouvé.</p>';
+            arcGroup.appendChild(arcPaliersList);
+            listElement.appendChild(arcGroup);
         }
 
     } catch (error) {
@@ -283,9 +368,8 @@ function populateArcOptions(arcs) {
 
     selects.forEach(selectElement => {
         if (!selectElement) {
-            // Pas grave si l'un n'existe pas, on continue
             console.warn("Un élément <select> d'Arc n'a pas été trouvé.");
-            return;
+            return; // Pas grave si l'un n'existe pas, on continue
         }
 
         selectElement.innerHTML = '<option value="">-- Choisir un Arc --</option>'; 
@@ -302,21 +386,30 @@ function populateArcOptions(arcs) {
             }
         });
     });
+
+    // --- CORRECTION AJOUTÉE ---
+    // Maintenant que les <select> sont pleins, on active le bouton !
+    const questButton = document.getElementById('btn-submit-quest');
+    if (questButton) {
+        if (arcs.length > 0) {
+            questButton.disabled = false; // On retire la désactivation
+            questButton.innerHTML = '<i class="fas fa-plus-circle"></i> Ajouter la Quête'; // On change le texte
+        } else {
+            // S'il n'y a pas d'arcs, on affiche une erreur
+            questButton.innerHTML = 'Erreur: Arcs non chargés';
+            // et on le laisse désactivé
+        }
+    }
+    // --- FIN DE LA CORRECTION ---
 }
 
 
-
-/**
- * [VERSION MISE À JOUR]
- * Charge les Paliers et les affiche groupés par Arc,
- * avec des boutons de complétion fonctionnels.
- */
 async function loadMilestones() {
     const listElement = document.getElementById('milestones-list');
     listElement.innerHTML = '<p>Chargement du Sanctuaire des Paliers...</p>';
     
     try {
-        const response = await fetch(PALIERS_API_URL); // Défini dans config.js
+        const response = await fetch(PALIERS_API_URL);
         const data = await response.json(); 
 
         if (!Array.isArray(data) || data.length === 0) {
@@ -324,25 +417,22 @@ async function loadMilestones() {
             return;
         }
 
-        // --- Logique de Groupement ---
         const milestonesByArc = {};
         data.forEach(palier => {
-            const arcName = palier['Arc Associé'] || 'Non assigné'; // Clé du CSV
+            const arcName = palier['Arc Associé'] || 'Non assigné';
             if (!milestonesByArc[arcName]) {
                 milestonesByArc[arcName] = [];
             }
             milestonesByArc[arcName].push(palier);
         });
         
-        listElement.innerHTML = ''; // Nettoie le conteneur
+        listElement.innerHTML = ''; 
 
-        // --- Logique de Rendu (Refactorisée) ---
         for (const arcName in milestonesByArc) {
             
             const arcGroup = document.createElement('div');
             arcGroup.className = 'milestone-arc-group';
             
-            // On cherche le nom lisible de l'Arc (ex: "🩻 Santé")
             const arcDetails = globalArcsData.find(a => a["ID Arc"] === arcName);
             const arcDisplayName = arcDetails ? arcDetails["Nom Modifiable"] : arcName;
             
@@ -350,11 +440,10 @@ async function loadMilestones() {
 
             const arcPaliersList = document.createElement('div');
 
-            // Tri : Paliers non atteints en premier
             const sortedPaliers = milestonesByArc[arcName].sort((a, b) => {
                 const aDone = a['Atteint?'] === 'VRAI' || a['Atteint?'] === 'TRUE';
                 const bDone = b['Atteint?'] === 'VRAI' || b['Atteint?'] === 'TRUE';
-                return aDone - bDone; // false (0) vient avant true (1)
+                return aDone - bDone;
             });
 
             sortedPaliers.forEach(palier => {
@@ -363,41 +452,54 @@ async function loadMilestones() {
                 const xpFixed = palier['XP Obtenue (Fixe)'] || 0;
                 const difficulte = palier['Difficulté'] || 'N/A';
 
-                // 1. Créer l'item principal
                 const palierItem = document.createElement('div');
                 palierItem.className = 'quest-item';
                 palierItem.style.backgroundColor = isAchieved ? '#4d7c0f' : '#6b4d3b';
-                // Ajout de l'attribut pour la sélection (utilisé dans completeMilestone)
                 palierItem.setAttribute('data-milestone-id', description);
 
-                // 2. Créer l'info
                 const info = document.createElement('div');
                 info.className = 'quest-info';
                 info.innerHTML = `<strong>[${difficulte}]</strong> ${description}`;
 
-                // 3. Créer le label d'XP
                 const xpLabel = document.createElement('span');
                 xpLabel.className = 'xp-label';
                 xpLabel.style.backgroundColor = '#f59e0b';
                 xpLabel.textContent = `+${xpFixed} XP`;
 
-                // 4. Créer le bouton
+                // --- [MISE À JOUR] ---
+                const palierActions = document.createElement('div');
+                palierActions.className = 'quest-actions';
+
                 const completeButton = document.createElement('button');
                 completeButton.style.marginLeft = '10px';
                 completeButton.textContent = isAchieved ? 'DÉBLOQUÉ' : 'Valider';
                 completeButton.disabled = isAchieved;
                 
-                // C'est ici que la magie opère !
                 if (!isAchieved) {
                     completeButton.onclick = () => {
                         completeMilestone(description, xpFixed);
                     };
                 }
 
-                // 5. Assembler
+                // Ajout du bouton POUBELLE
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = '🗑️';
+                deleteButton.className = 'delete-btn';
+                deleteButton.style.backgroundColor = '#a83232';
+                deleteButton.onclick = () => {
+                    handleDeleteMilestone(description);
+                };
+                // --- [FIN MISE À JOUR] ---
+
                 palierItem.appendChild(info);
                 palierItem.appendChild(xpLabel);
-                palierItem.appendChild(completeButton);
+                
+                // Ajout des boutons au conteneur
+                palierActions.appendChild(completeButton);
+                palierActions.appendChild(deleteButton); // <-- CORRECTION ICI
+                
+                palierItem.appendChild(palierActions);
+                
                 arcPaliersList.appendChild(palierItem);
             });
 
@@ -411,8 +513,6 @@ async function loadMilestones() {
     }
 }
 
-
-// --- Ajout dans render.js ---
 
 /**
  * Gère le processus de complétion d'un Palier.
@@ -447,6 +547,58 @@ async function completeMilestone(description, xp) {
             }
         } else {
             alert("Échec de la validation du Palier. L'API a peut-être échoué (voir console).");
+        }
+    }
+}
+
+
+
+/**
+ * Gère la suppression d'une quête.
+ * @param {string} questName - L'identifiant de la quête
+ */
+async function handleDeleteQuest(questName) {
+    // Confirmation
+    if (confirm(`Veux-tu vraiment bannir la quête : "${questName}" ?\n(Cette action est irréversible)`)) {
+        
+        const success = await deleteQuest(questName);
+
+        if (success) {
+            // Supprime l'élément du DOM
+            const item = document.querySelector(`[data-quest-id="${questName}"]`);
+            if (item) {
+                item.remove();
+            }
+            // Recharge les stats au cas où la quête supprimée était validée
+            await loadPlayerStats();
+            alert("Quête bannie !");
+        } else {
+            alert("Échec du bannissement. (Voir console)");
+        }
+    }
+}
+
+/**
+ * Gère la suppression d'un palier.
+ * @param {string} description - L'identifiant du palier
+ */
+async function handleDeleteMilestone(description) {
+    // Confirmation
+    if (confirm(`Veux-tu vraiment bannir le Palier : "${description}" ?\n(Cette action est irréversible)`)) {
+        
+        const success = await deleteMilestone(description);
+
+        if (success) {
+            // Supprime l'élément du DOM
+            const item = document.querySelector(`[data-milestone-id="${description}"]`);
+            if (item) {
+                item.remove();
+            }
+            // Recharge les stats au cas où le palier supprimé était validé
+            await loadPlayerStats();
+            alert("Palier banni !");
+        } else {
+            alert("Échec du bannissement. (Voir console)");
         }
     }
 }
