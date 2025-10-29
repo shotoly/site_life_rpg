@@ -1,8 +1,41 @@
-// --- main.js (Corrigé) ---
+// --- main.js ---
 
-// [CORRECTION 1] Déclare la variable globale pour les Arcs
-let globalArcsData = [];
+// --- VARIABLES GLOBALES ---
+let globalArcsData = []; // Stocke les données des Arcs pour les réutiliser
 
+// --- INITIALISATION ---
+
+// Lancement de l'application
+initApp();
+
+/**
+ * Fonction principale qui orchestre le chargement de l'application.
+ * Rendue 'async' pour garantir que les Arcs sont chargés AVANT le reste.
+ */
+async function initApp() {
+    console.log("Life RPG démarré. Chargement des données du Registre du Destin...");
+
+    // 1. Initialise la logique des onglets
+    setupTabs();
+
+    // 2. Attache les écouteurs d'événements aux formulaires
+    setupEventListeners();
+
+    // 3. Déclenchement initial des fonctions de chargement
+    // On 'await' les Arcs EN PREMIER, car les Quêtes et Paliers en dépendent.
+    await loadArcs();
+
+    // Maintenant que globalArcsData est rempli, on peut charger le reste
+    loadPlayerStats();
+    loadQuests();
+    loadMilestones();
+}
+
+// --- GESTION DES ONGLETS (TABS) ---
+
+/**
+ * Configure la navigation par onglets (Quêtes, Paliers, etc.)
+ */
 function setupTabs() {
     const buttons = document.querySelectorAll('.tab-button');
     const contents = document.querySelectorAll('.tab-content');
@@ -22,14 +55,35 @@ function setupTabs() {
     });
 }
 
+// --- GESTIONNAIRES D'ÉVÉNEMENTS (FORMS) ---
 
-const form = document.getElementById('form-create-quest');
-form.addEventListener('submit', handleCreateQuestSubmit);
+/**
+ * Attache les listeners 'submit' aux formulaires de création.
+ */
+function setupEventListeners() {
+    // Formulaire de création de Quête
+    const formQuest = document.getElementById('form-create-quest');
+    if (formQuest) {
+        formQuest.addEventListener('submit', handleCreateQuestSubmit);
+    } else {
+        console.warn("Le formulaire 'form-create-quest' n'a pas été trouvé.");
+    }
 
+    // Formulaire de création de Palier
+    const formMilestone = document.getElementById('form-create-milestone');
+    if (formMilestone) {
+        formMilestone.addEventListener('submit', handleCreateMilestoneSubmit);
+    } else {
+        console.warn("Le formulaire 'form-create-milestone' n'a pas été trouvé.");
+    }
+}
 
+/**
+ * Gère la soumission du formulaire de création de Quête.
+ */
 async function handleCreateQuestSubmit(event) {
     event.preventDefault();
-    console.log("Soumission du formulaire de création de quête (Mode Fetch/SheetDB)...");
+    console.log("Soumission du formulaire de création de quête...");
 
     // 1. Récupérer les valeurs du formulaire
     const queteName = document.getElementById('quest-name-input').value;
@@ -47,52 +101,39 @@ async function handleCreateQuestSubmit(event) {
     }
     const arcName = selectedArc["Nom Modifiable"];
 
-    // 3. CONSTRUIRE L'OBJET (correspondant aux noms des colonnes)
-    // C'est la principale modification : on passe d'un Array [val1, val2] 
-    // à un Objet { "colonne1": val1, "colonne2": val2 }
-    
+    // 3. Construire l'objet de données (correspondant aux colonnes GSheet)
     const questDataObject = {
-        "Nom de l'Arc": arcId,       // Colonne A (dans tes commentaires)
-        "Arc": arcName,              // Colonne B
-        "Fréquence": frequency,      // Colonne C
-        "Quete": queteName,          // Colonne D
+        "Nom de l'Arc": arcId,
+        "Arc": arcName,
+        "Fréquence": frequency,
+        "Quete": queteName,
         // "XP / Quête" (E) est géré par api.js (mis à null)
-        "Intensité": parseInt(intensity, 10), // Colonne F
+        "Intensité": parseInt(intensity, 10),
         // "" (G) est ignoré
-        "Répétition": parseInt(repetition, 10), // Colonne H
+        "Répétition": parseInt(repetition, 10),
         // "Statut" (I) est géré par api.js (mis à false)
     };
 
     console.log("Données envoyées à l'API (Objet):", questDataObject);
 
-    // 4. Appeler l'API avec le NOUVEL OBJET
+    // 4. Appeler l'API
     showToast("Création de la quête en cours...", "info");
     const success = await createQuest(questDataObject); // On envoie l'objet
 
+    // 5. Gérer la réponse
     if (success) {
         showToast("Quête créée avec succès !", "success");
-        // Réinitialiser et fermer le modal (si tu en as un)
         document.getElementById('form-create-quest').reset();
-        
-        // (Optionnel : si tu as un modal)
-        // document.getElementById('quest-creation-modal').style.display = 'none';
-
-        // Recharger les données
-        // (Tu n'as pas fetchAllData, donc on appelle les fonctions individuelles)
-        await loadQuests();
-        
+        await loadQuests(); // Recharger les quêtes
     } else {
         showToast("Échec de la création de la quête.", "error");
     }
 }
-const formMilestone = document.getElementById('form-create-milestone');
-if (formMilestone) {
-    formMilestone.addEventListener('submit', handleCreateMilestoneSubmit);
-} else {
-    console.warn("Le formulaire 'form-create-milestone' n'a pas été trouvé.");
-}
 
-
+/**
+ * Gère la soumission du formulaire de création de Palier.
+ * [MISE À JOUR DE LA QUÊTE]
+ */
 async function handleCreateMilestoneSubmit(event) {
     event.preventDefault();
     console.log("Soumission du formulaire de création de Palier...");
@@ -101,10 +142,12 @@ async function handleCreateMilestoneSubmit(event) {
     const desc = document.getElementById('milestone-desc-input').value;
     const arcId = document.getElementById('milestone-arc-select').value;
     const difficulty = document.getElementById('milestone-difficulty-select').value;
-    const xp = document.getElementById('milestone-xp-input').value;
 
-    if (!globalArcsData) {
-        alert("Erreur : Les données des Arcs ne sont pas prêtes.");
+    // [MODIFICATION] On supprime la récupération de l'XP manuelle
+    // const xp = document.getElementById('milestone-xp-input').value; 
+
+    if (!globalArcsData || globalArcsData.length === 0) {
+        alert("Erreur : Les données des Arcs ne sont pas prêtes. Veuillez patienter.");
         return;
     }
 
@@ -113,44 +156,26 @@ async function handleCreateMilestoneSubmit(event) {
         "Arc Associé": arcId,
         "Description": desc,
         "Difficulté": difficulty,
-        "XP Obtenue (Fixe)": parseInt(xp, 10)
+        // [MODIFICATION] On envoie 'null' pour laisser Google Sheet calculer l'XP
+        "XP Obtenue (Fixe)": null
     };
 
     // 4. Appeler l'API
+    showToast("Création du Palier en cours...", "info");
     const success = await createMilestone(milestoneData);
 
     // 5. Réinitialiser et recharger
     if (success) {
+        showToast("Palier créé avec succès !", "success");
         formMilestone.reset(); // Vider le formulaire
-        await loadMilestones();
+        await loadMilestones(); // Recharger les paliers
+    } else {
+        showToast("Échec de la création du Palier.", "error");
     }
 }
 
-// [CORRECTION 2] Rendre initApp 'async' pour contrôler l'ordre
-async function initApp() {
-    console.log("Life RPG démarré. Chargement des données du Registre du Destin...");
 
-    // 1. Initialise la logique des onglets
-    setupTabs();
-
-    // 2. Déclenchement initial des fonctions
-    // On doit 'await' les Arcs EN PREMIER, car les Paliers en dépendent.
-
-    await loadArcs(); // Charge les Arcs (et remplit 'globalArcsData')
-
-    // Maintenant que globalArcsData existe, on peut charger le reste
-    loadPlayerStats();
-    loadQuests();
-    loadMilestones();
-}
-
-
-
-// Lancement de l'application
-initApp();
-
-
-// --- À AJOUTER À LA FIN DE main.js ---
+// --- UTILITAIRES (Toasts) ---
 
 /**
  * Affiche une notification (toast) à l'écran.
@@ -170,13 +195,13 @@ function showToast(message, type = 'info') {
     setTimeout(() => {
         toast.style.opacity = '1';
         toast.style.transform = 'translate(-50%, 0)';
-    }, 100); 
+    }, 100);
 
     // Fait disparaître le toast après 3 secondes
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translate(-50%, -20px)';
-        
+
         // Supprime l'élément du DOM après la transition
         setTimeout(() => {
             if (toast.parentNode) {
@@ -185,4 +210,3 @@ function showToast(message, type = 'info') {
         }, 500); // Doit correspondre à la transition CSS
     }, 3000);
 }
-
