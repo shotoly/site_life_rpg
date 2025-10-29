@@ -27,6 +27,7 @@ async function completeQuest(identifier, xp) {
         }
     }
 }
+
 async function loadPlayerStats() {
     const statsElement = document.getElementById('player-stats');
     
@@ -36,19 +37,29 @@ async function loadPlayerStats() {
 
         if (Array.isArray(data) && data.length > 0) { 
             const player = data[0]; 
-            // Clés basées sur la feuille Joueur transposée
-            const currentXP = parseInt(player['XP Actuelle']) || 0;
-            const currentLevel = parseInt(player['Niveau']) || 1;
             
-            // Formule simple pour l'affichage de progression
-            const nextLevelXP = currentLevel * 1000; 
+            // --- DÉBUT DES CORRECTIONS ---
 
+            // 1. Lire les données brutes
+            const currentXP = parseInt(player['XP Actuelle']) || 0;
+            const totalXPGoal = parseInt(player['XP Objectif Total']) || 1; // Récupère l'objectif (1 pour éviter div/0)
+            const currentLevelName = player['Niveau'] || "LVL ???"; // Lit "LVL 12" directement
+            const playerName = player['Nom'] || 'Héros Inconnu';
+
+            // 2. Calculer le ratio de progression (identique à la formule GSheet)
+            const progressRatio = (currentXP / totalXPGoal);
+            // Conversion en pourcentage (sans dépasser 100%)
+            const progressPercent = Math.min(100, progressRatio * 100); 
+
+            // --- FIN DES CORRECTIONS ---
+
+            // 3. Mettre à jour le HTML avec les bonnes variables
             statsElement.innerHTML = `
-                <h2>${player['Nom'] || 'Héros Inconnu'} <small>(Niveau ${currentLevel})</small></h2>
-                <p>XP Totale : ${currentXP} / ${nextLevelXP}</p>
+                <h2>${playerName} <small>(${currentLevelName})</small></h2>
+                <p>XP Totale : ${currentXP} / ${totalXPGoal}</p>
                 <div class="xp-bar-container" style="background-color: #3b3b64; height: 15px; border-radius: 5px;">
                     <div class="xp-bar" 
-                         style="width: ${Math.min(100, (currentXP / nextLevelXP) * 100)}%; 
+                         style="width: ${progressPercent}%; 
                                 background-color: #00bcd4; height: 100%; border-radius: 5px;">
                     </div>
                 </div>
@@ -62,6 +73,7 @@ async function loadPlayerStats() {
         statsElement.innerHTML = '<p>Erreur de connexion au Registre du Destin (Stats).</p>';
     }
 }
+
 async function loadQuests() {
     const listElement = document.getElementById('quests-list');
     listElement.innerHTML = '<p>Chargement des quêtes...</p>'; 

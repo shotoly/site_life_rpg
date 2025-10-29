@@ -185,3 +185,4 @@ function showToast(message, type = 'info') {
         }, 500); // Doit correspondre à la transition CSS
     }, 3000);
 }
+
