@@ -139,7 +139,6 @@ async function createQuest(questDataObject) {
         data: {
             ...questDataObject,
             "Statut": false, // Une nouvelle quête n'est pas faite
-            "XP / Quête": null // Laisse la formule Google Sheet calculer l'XP
         }
     };
 

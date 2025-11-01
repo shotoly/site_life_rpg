@@ -1,32 +1,5 @@
 // --- Fichier : render.js (Mis à jour) ---
-async function completeQuest(identifier, xp) {
-    
-    // Nettoyage de la chaîne XP pour retirer les espaces et garantir la conversion numérique
-    const cleanedXpString = xp ? xp.toString().replace(/[^0-9]/g, '') : '0';
-    const xpNumeric = parseInt(cleanedXpString) || 0;
 
-    if (confirm(`Es-tu sûr d'avoir accompli : "${identifier}" ? (Gain potentiel de ${xpNumeric} XP)`)) {
-        
-        // 1. Tente de marquer la quête comme faite dans Sheets (PATCH)
-        const success = await markQuestAsDone(identifier);
-
-        if (success) {
-            // 2. Rechargement des stats du joueur pour que la barre d'XP se mette à jour 
-            //    (via la formule SOMME de Google Sheets).
-            await loadPlayerStats();
-
-            // 3. Mise à jour visuelle immédiate du Frontend
-            alert(`Victoire ! ${identifier} accomplie ! L'XP a été ajouté à votre total.`);
-            
-            const item = document.querySelector(`[data-quest-id="${identifier}"]`);
-            if (item) {
-                item.style.opacity = 0.5;
-                item.querySelector('button').disabled = true;
-                item.querySelector('button').textContent = 'Accomplie !';
-            }
-        }
-    }
-}
 
 async function loadPlayerStats() {
     const statsElement = document.getElementById('player-stats');
@@ -142,7 +115,7 @@ async function loadQuests() {
                 completeButton.textContent = isDone ? 'Accomplie !' : 'Accomplir';
                 completeButton.disabled = isDone;
                 completeButton.onclick = () => {
-                    completeQuest(questIdentifier, xpReward);
+                    completeQuest(quest); 
                 };
 
                 // Ajout du bouton POUBELLE
@@ -548,19 +521,45 @@ async function completeMilestone(description, xp) {
     if (confirm(`As-tu vraiment atteint le Palier majeur : "${description}" ?\n\n(Gain unique : ${xpNumeric} XP)`)) {
         
         // 2. Appeler l'API pour marquer comme "Atteint?" = TRUE
-        const success = await markMilestoneAsDone(description);
+        const success = await markMilestoneAsDone(description); // (Depuis api.js)
 
         if (success) {
-            // 3. Recharger les stats du joueur (pour la barre d'XP)
+
+            // --- DÉBUT DE LA CORRECTION ---
+            // 3. Si le marquage a réussi, on AJOUTE l'XP (logique déplacée depuis onEdit)
+            try {
+                const player = await getPlayerStats(); // (Depuis api.js)
+                if (!player) {
+                    alert("ERREUR : Joueur introuvable pour ajouter l'XP.");
+                    return;
+                }
+
+                const currentXP = parseInt(player["XP Actuelle"]) || 0;
+                const newTotalXP = currentXP + xpNumeric;
+
+                // On appelle l'API pour mettre à jour l'XP
+                const xpSuccess = await updatePlayerXp(player.Nom, newTotalXP); // (Depuis api.js)
+
+                if (!xpSuccess) {
+                    alert("ERREUR : L'XP n'a pas pu être ajoutée, mais le palier est marqué comme 'Atteint'.");
+                } else {
+                    // L'alerte de victoire est maintenant ici
+                    alert(`Triomphe ! Palier atteint : "${description}" ! +${xpNumeric} XP !`);
+                }
+
+            } catch (error) {
+                console.error("Erreur lors de la mise à jour de l'XP du Palier:", error);
+                alert("Erreur critique lors de la mise à jour de l'XP.");
+            }
+            // --- FIN DE LA CORRECTION ---
+
+
+            // 4. Recharger les stats du joueur (pour la barre d'XP)
             await loadPlayerStats();
 
-            // 4. Mettre à jour l'interface immédiatement
-            alert(`Triomphe ! Palier atteint : "${description}" ! +${xpNumeric} XP !`);
-            
-            // Cible l'élément grâce à un attribut que nous allons ajouter (voir Mission 3)
+            // 5. Mettre à jour l'interface immédiatement
             const item = document.querySelector(`[data-milestone-id="${description}"]`);
             if (item) {
-                // Change la couleur et désactive le bouton
                 item.style.backgroundColor = '#4d7c0f'; // Couleur "Atteint"
                 const button = item.querySelector('button');
                 button.disabled = true;
