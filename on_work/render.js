@@ -17,7 +17,7 @@ async function loadPlayerStats() {
             const currentXP = parseInt(player['XP Actuelle']) || 0;
             const currentLevelName = player['Niveau'] || "LVL ???";
             const playerName = player['Nom'] || 'Héros Inconnu';
-
+            const playerAvatarUrl = player['AvatarURL'] || 'image/default-avatar.png';
             // 2. [NOUVEAU] Lire les paliers que nous venons de créer
             const xpPalierActuel = parseInt(player['XP Palier Actuel (Absolu)']) || 0;
             // (Si le palier suivant n'existe pas, on met 1 de plus pour éviter une division par zéro)
@@ -35,13 +35,17 @@ async function loadPlayerStats() {
 
             // 5. Mettre à jour le HTML avec les NOUVELLES variables
             statsElement.innerHTML = `
-                <h2>${playerName} <small>(${currentLevelName})</small></h2>
-
+                
+                <div class="player-header">
+                    <img src="${playerAvatarUrl}" alt="Avatar" class="player-avatar">
+                    <h2>${playerName} <small>(${currentLevelName})</small></h2>
+                </div>
+                
                 <p>Progression Niveau : ${xpActuelDansNiveau} / ${xpRequisPourNiveau} XP</p>
-
+                
                 <div class="xp-bar-container">
                     <div class="xp-bar" 
-                        style="width: ${progressPercent}%;">
+                         style="width: ${progressPercent}%;">
                     </div>
                 </div>
             `;
