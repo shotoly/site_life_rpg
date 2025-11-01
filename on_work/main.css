@@ -1,7 +1,9 @@
 /* --- CSS extrait de index.html --- */
 body {
     font-family: Arial, sans-serif;
-    background-color: #1a1a2e;
+    background-image: url(image/wallpaper.svg);
+    background-size: cover;       /* Ajuste l’image pour couvrir tout l’élément */
+    background-repeat: no-repeat; /* Empêche la répétition de l’image */
     /* Couleur de fond RPG sombre */
     color: #e5e5e5;
     padding: 20px;
