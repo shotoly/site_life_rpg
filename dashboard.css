@@ -1,0 +1,26 @@
+/* Barre d'XP */
+.xp-bar-container {
+    background-color: #3b3b64; 
+    height: 15px; 
+    border-radius: 5px;
+}
+
+.xp-bar {
+    background-color: #c200d4; 
+    height: 100%; 
+    border-radius: 5px;
+    /* La largeur (width) sera gérée en inline */
+}
+
+/* Ajouts pour l'avatar du joueur */
+
+.player-header {
+    display: flex;
+    align-items: center; /* Aligne l'avatar et le nom verticalement */
+    gap: 15px;         /* Crée un espace entre l'avatar et le nom */
+    margin-bottom: 10px; /* Espace sous le header */
+}
+
+.player-avatar {
+    height: 60px;
+}

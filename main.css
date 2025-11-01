@@ -1,0 +1,162 @@
+/* --- CSS extrait de index.html --- */
+body {
+    font-family: Arial, sans-serif;
+    background-image: url(image/wallpaper.svg);
+    background-size: cover;       /* Ajuste l’image pour couvrir tout l’élément */
+    background-repeat: no-repeat; /* Empêche la répétition de l’image */
+    /* Couleur de fond RPG sombre */
+    color: #e5e5e5;
+    padding: 20px;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+    background-color: transparent;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+h1 {
+    color: #ffe66d;
+    /* Couleur de titre dorée */
+    text-align: center;
+    border-bottom: 2px solid #555;
+    padding-bottom: 10px;
+}
+
+
+.xp-label {
+    background-color: #d83d6a;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    margin-left: 15px;
+}
+
+/* Styles pour le système d'onglets */
+.tabs-menu {
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #555;
+}
+
+.tab-button {
+    background-color: transparent;
+    border: none;
+    color: #e5e5e5;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: all 0.3s;
+    border-bottom: 3px solid transparent;
+}
+
+.tab-button:hover:not(.active) {
+    background-color: #3b3b64;
+}
+
+.tab-button.active {
+    color: #ffe66d;
+    border-bottom: 3px solid #ffe66d;
+    font-weight: bold;
+}
+
+.tab-content {
+    display: none;
+    padding: 20px 0;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* --- Styles pour les Toasts / Notifications --- */
+.toast {
+    position: fixed;
+    /* Reste à l'écran même si on scrolle */
+    top: 20px;
+    left: 50%;
+    transform: translate(-50%, -20px);
+    /* Position initiale (caché) */
+    padding: 12px 20px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #fff;
+    opacity: 0;
+    /* Invisible par défaut */
+    z-index: 1000;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.toast.toast-info {
+    background-color: #00bcd4;
+    /* Bleu */
+}
+
+.toast.toast-success {
+    background-color: #4CAF50;
+    /* Vert */
+}
+
+.toast.toast-error {
+    background-color: #d83d6a;
+    /* Rouge/Rose */
+}
+
+/* --- CSS extrait de la section Quêtes --- */
+.arc-manager li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    background-color: #3b3b64;
+    margin-bottom: 5px;
+    border-radius: 4px;
+}
+
+.arc-manager input {
+    flex-grow: 1;
+    margin: 0 10px;
+    background: #e5e5e5;
+    color: #1a1a2e;
+    border: none;
+    padding: 5px;
+}
+
+.arc-manager .arc-name {
+    font-weight: bold;
+}
+
+
+/* Animation du Toast via une classe */
+.toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+
+
+
+/* Dans main.css */
+.tab-button {
+    background-color: transparent;
+    border: none;
+    color: #e5e5e5;
+    padding: 10px 15px; /* <- Tu as déjà ça */
+    cursor: pointer;
+    font-size: 1.5em;
+    transition: all 0.3s;
+    border-bottom: 3px solid transparent;
+
+    /* --- AJOUTS SUGGÉRÉS --- */
+    /* Donne une taille carrée aux boutons pour les icônes */
+    width: 50px; 
+    height: 50px;
+    /* Ajuste le padding pour centrer l'icône si nécessaire */
+    padding: 12px; /* Ajuste cette valeur pour centrer parfaitement */
+    box-sizing: border-box; /* Assure que le padding n'augmente pas la taille */
+}

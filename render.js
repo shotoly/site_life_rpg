@@ -3,30 +3,30 @@
 
 async function loadPlayerStats() {
     const statsElement = document.getElementById('player-stats');
-    
+
     try {
         const response = await fetch(PLAYER_API_URL);
-        const data = await response.json(); 
+        const data = await response.json();
 
-        if (Array.isArray(data) && data.length > 0) { 
-            const player = data[0]; 
-            
+        if (Array.isArray(data) && data.length > 0) {
+            const player = data[0];
+
             // --- DÉBUT DES MODIFICATIONS ---
 
             // 1. Lire les données brutes (comme avant)
             const currentXP = parseInt(player['XP Actuelle']) || 0;
             const currentLevelName = player['Niveau'] || "LVL ???";
             const playerName = player['Nom'] || 'Héros Inconnu';
-
+            const playerAvatarUrl = player['AvatarURL'] || 'image/default-avatar.png';
             // 2. [NOUVEAU] Lire les paliers que nous venons de créer
             const xpPalierActuel = parseInt(player['XP Palier Actuel (Absolu)']) || 0;
             // (Si le palier suivant n'existe pas, on met 1 de plus pour éviter une division par zéro)
-            const xpPalierSuivant = parseInt(player['XP Palier Suivant (Absolu)']) || (xpPalierActuel + 1); 
+            const xpPalierSuivant = parseInt(player['XP Palier Suivant (Absolu)']) || (xpPalierActuel + 1);
 
             // 3. [NOUVEAU] Calculer la progression pour le niveau actuel
             const xpRequisPourNiveau = xpPalierSuivant - xpPalierActuel;
             const xpActuelDansNiveau = currentXP - xpPalierActuel;
-            
+
             // 4. Calculer le ratio de progression (basé sur le niveau actuel)
             const progressRatio = (xpRequisPourNiveau > 0) ? (xpActuelDansNiveau / xpRequisPourNiveau) : 0;
             const progressPercent = Math.min(100, Math.max(0, progressRatio * 100)); // Garantit 0-100%
@@ -35,14 +35,17 @@ async function loadPlayerStats() {
 
             // 5. Mettre à jour le HTML avec les NOUVELLES variables
             statsElement.innerHTML = `
-                <h2>${playerName} <small>(${currentLevelName})</small></h2>
+                
+                <div class="player-header">
+                    <img src="image/player.png" alt="Avatar" class="player-avatar">
+                    <h2>${playerName} <small>(${currentLevelName})</small></h2>
+                </div>
                 
                 <p>Progression Niveau : ${xpActuelDansNiveau} / ${xpRequisPourNiveau} XP</p>
                 
-                <div class="xp-bar-container" style="background-color: #3b3b64; height: 15px; border-radius: 5px;">
+                <div class="xp-bar-container">
                     <div class="xp-bar" 
-                         style="width: ${progressPercent}%; 
-                                background-color: #00bcd4; height: 100%; border-radius: 5px;">
+                         style="width: ${progressPercent}%;">
                     </div>
                 </div>
             `;
@@ -58,7 +61,7 @@ async function loadPlayerStats() {
 
 async function loadQuests() {
     const listElement = document.getElementById('quests-list');
-    listElement.innerHTML = '<p>Chargement des quêtes...</p>'; 
+    listElement.innerHTML = '<p>Chargement des quêtes...</p>';
 
     try {
         const response = await fetch(QUOTES_API_URL); // Note: Tu l'as appelé QUOTES_API_URL
@@ -67,15 +70,15 @@ async function loadQuests() {
         }
 
         const data = await response.json();
-        
+
         if (Array.isArray(data)) {
-            listElement.innerHTML = ''; 
+            listElement.innerHTML = '';
 
             if (data.length === 0) {
                 listElement.innerHTML = '<p>Aucune quête trouvée. Ajoutez des entrées !</p>';
                 return;
             }
-            
+
             // Tri : non-faites (FALSE) en premier
             const sortedQuests = data.sort((a, b) => {
                 const aDone = a['Statut'] === 'TRUE' || a['Statut'] === 'VRAI' || a['Statut'] === true;
@@ -84,7 +87,7 @@ async function loadQuests() {
             });
 
             sortedQuests.forEach(quest => {
-                const questIdentifier = quest['Quete']; 
+                const questIdentifier = quest['Quete'];
                 const xpReward = quest['XP / Quête'];
                 const isDone = quest['Statut'] === 'TRUE' || quest['Statut'] === 'VRAI' || quest['Statut'] === true;
 
@@ -92,7 +95,7 @@ async function loadQuests() {
                 questItem.className = 'quest-item';
                 questItem.setAttribute('data-quest-id', questIdentifier);
                 if (isDone) {
-                    questItem.style.opacity = 0.5;
+                    questItem.classList.add('quest-done');
                 }
 
                 const questInfo = document.createElement('div');
@@ -115,7 +118,7 @@ async function loadQuests() {
                 completeButton.textContent = isDone ? 'Accomplie !' : 'Accomplir';
                 completeButton.disabled = isDone;
                 completeButton.onclick = () => {
-                    completeQuest(quest); 
+                    completeQuest(quest);
                 };
 
                 // Ajout du bouton POUBELLE
@@ -131,12 +134,12 @@ async function loadQuests() {
 
                 questItem.appendChild(questInfo);
                 questItem.appendChild(xpLabel);
-                
+
                 // Ajout des boutons au conteneur d'actions
                 questActions.appendChild(completeButton);
                 questActions.appendChild(deleteButton);
                 questItem.appendChild(questActions); // Ajout du conteneur
-                
+
                 listElement.appendChild(questItem);
             });
         } else {
@@ -144,7 +147,7 @@ async function loadQuests() {
         }
 
     } catch (error) {
-        listElement.innerHTML = '<p>Erreur: Impossible de contacter le Registre du Destin (Quêtes). Vérifiez la console.</p>'; 
+        listElement.innerHTML = '<p>Erreur: Impossible de contacter le Registre du Destin (Quêtes). Vérifiez la console.</p>';
         console.error('Erreur lors du chargement des quêtes:', error);
     }
 
@@ -154,10 +157,10 @@ async function loadQuests() {
 async function loadMilestones() {
     const listElement = document.getElementById('milestones-list');
     listElement.innerHTML = '<p>Chargement du Sanctuaire des Paliers...</p>';
-    
+
     try {
         const response = await fetch(PALIERS_API_URL);
-        const data = await response.json(); 
+        const data = await response.json();
 
         if (!Array.isArray(data) || data.length === 0) {
             listElement.innerHTML = '<p>Aucun Palier majeur trouvé.</p>';
@@ -172,17 +175,17 @@ async function loadMilestones() {
             }
             milestonesByArc[arcName].push(palier);
         });
-        
-        listElement.innerHTML = ''; 
+
+        listElement.innerHTML = '';
 
         for (const arcName in milestonesByArc) {
-            
+
             const arcGroup = document.createElement('div');
             arcGroup.className = 'milestone-arc-group';
-            
+
             const arcDetails = globalArcsData.find(a => a["ID Arc"] === arcName);
             const arcDisplayName = arcDetails ? arcDetails["Nom Modifiable"] : arcName;
-            
+
             arcGroup.innerHTML = `<h3>${arcDisplayName}</h3>`;
 
             const arcPaliersList = document.createElement('div');
@@ -221,7 +224,7 @@ async function loadMilestones() {
                 completeButton.style.marginLeft = '10px';
                 completeButton.textContent = isAchieved ? 'DÉBLOQUÉ' : 'Valider';
                 completeButton.disabled = isAchieved;
-                
+
                 if (!isAchieved) {
                     completeButton.onclick = () => {
                         completeMilestone(description, xpFixed);
@@ -240,12 +243,12 @@ async function loadMilestones() {
 
                 palierItem.appendChild(info);
                 palierItem.appendChild(xpLabel);
-                
+
                 // Ajout des boutons au conteneur
                 palierActions.appendChild(completeButton);
                 palierActions.appendChild(deleteButton);
                 palierItem.appendChild(palierActions);
-                
+
                 arcPaliersList.appendChild(palierItem);
             });
 
@@ -268,10 +271,10 @@ async function loadArcs() {
         const data = await response.json();
 
         if (Array.isArray(data) && data.length > 0) {
-            
+
             // --- DÉBUT DU PATCH ---
             // 1. Stocke les données globalement pour le formulaire de création
-            globalArcsData = data; 
+            globalArcsData = data;
             // 2. APPELLE LA FONCTION pour remplir le <select> !
             populateArcOptions(globalArcsData);
             // --- FIN DU PATCH ---
@@ -284,15 +287,15 @@ async function loadArcs() {
                 const arcName = arc['Nom Modifiable'];
 
                 const li = document.createElement('li');
-                
+
                 // Crée les éléments
                 const idLabel = document.createElement('span');
                 idLabel.textContent = `[${arcID}]`;
-                
+
                 const nameLabel = document.createElement('span');
                 nameLabel.className = 'arc-name';
                 nameLabel.textContent = arcName;
-                
+
                 const inputField = document.createElement('input');
                 inputField.type = 'text';
                 inputField.value = arcName;
@@ -300,7 +303,7 @@ async function loadArcs() {
 
                 const editButton = document.createElement('button');
                 editButton.textContent = 'Modifier';
-                
+
                 const saveButton = document.createElement('button');
                 saveButton.textContent = 'Sauver';
                 saveButton.style.display = 'none'; // Caché par défaut
@@ -317,7 +320,7 @@ async function loadArcs() {
                 saveButton.onclick = async () => {
                     const newName = inputField.value;
                     const success = await updateArcName(arcID, newName);
-                    
+
                     if (success) {
                         nameLabel.textContent = newName;
                         nameLabel.style.display = 'block';
@@ -340,7 +343,7 @@ async function loadArcs() {
         } else {
             listElement.innerHTML = '<p>Aucun Arc Narratif trouvé.</p>';
             // S'il n'y a pas d'arcs, on le dit aussi dans le dropdown
-            populateArcOptions([]); 
+            populateArcOptions([]);
         }
     } catch (error) {
         console.error('Erreur lors du chargement des Arcs:', error);
@@ -354,10 +357,10 @@ async function loadArcs() {
  * @param {Array} arcs - Le tableau des objets Arcs (venant de globalArcsData)
  */
 function populateArcOptions(arcs) {
-    
+
     const questSelect = document.getElementById('quest-arc-select');
     const milestoneSelect = document.getElementById('milestone-arc-select');
-    
+
     const selects = [questSelect, milestoneSelect];
 
     selects.forEach(selectElement => {
@@ -366,16 +369,16 @@ function populateArcOptions(arcs) {
             return; // Pas grave si l'un n'existe pas, on continue
         }
 
-        selectElement.innerHTML = '<option value="">-- Choisir un Arc --</option>'; 
+        selectElement.innerHTML = '<option value="">-- Choisir un Arc --</option>';
 
         arcs.forEach(arc => {
             const idArc = arc["ID Arc"];
             const nomArc = arc["Nom Modifiable"];
-            
+
             if (idArc && nomArc) {
                 const option = document.createElement('option');
-                option.value = idArc; 
-                option.textContent = nomArc; 
+                option.value = idArc;
+                option.textContent = nomArc;
                 selectElement.appendChild(option);
             }
         });
@@ -401,10 +404,10 @@ function populateArcOptions(arcs) {
 async function loadMilestones() {
     const listElement = document.getElementById('milestones-list');
     listElement.innerHTML = '<p>Chargement du Sanctuaire des Paliers...</p>';
-    
+
     try {
         const response = await fetch(PALIERS_API_URL);
-        const data = await response.json(); 
+        const data = await response.json();
 
         if (!Array.isArray(data) || data.length === 0) {
             listElement.innerHTML = '<p>Aucun Palier majeur trouvé.</p>';
@@ -419,17 +422,17 @@ async function loadMilestones() {
             }
             milestonesByArc[arcName].push(palier);
         });
-        
-        listElement.innerHTML = ''; 
+
+        listElement.innerHTML = '';
 
         for (const arcName in milestonesByArc) {
-            
+
             const arcGroup = document.createElement('div');
             arcGroup.className = 'milestone-arc-group';
-            
+
             const arcDetails = globalArcsData.find(a => a["ID Arc"] === arcName);
             const arcDisplayName = arcDetails ? arcDetails["Nom Modifiable"] : arcName;
-            
+
             arcGroup.innerHTML = `<h3>${arcDisplayName}</h3>`;
 
             const arcPaliersList = document.createElement('div');
@@ -468,7 +471,7 @@ async function loadMilestones() {
                 completeButton.style.marginLeft = '10px';
                 completeButton.textContent = isAchieved ? 'DÉBLOQUÉ' : 'Valider';
                 completeButton.disabled = isAchieved;
-                
+
                 if (!isAchieved) {
                     completeButton.onclick = () => {
                         completeMilestone(description, xpFixed);
@@ -487,13 +490,13 @@ async function loadMilestones() {
 
                 palierItem.appendChild(info);
                 palierItem.appendChild(xpLabel);
-                
+
                 // Ajout des boutons au conteneur
                 palierActions.appendChild(completeButton);
                 palierActions.appendChild(deleteButton); // <-- CORRECTION ICI
-                
+
                 palierItem.appendChild(palierActions);
-                
+
                 arcPaliersList.appendChild(palierItem);
             });
 
@@ -514,12 +517,12 @@ async function loadMilestones() {
  * @param {number} xp - L'XP fixe à gagner
  */
 async function completeMilestone(description, xp) {
-    
+
     const xpNumeric = parseInt(xp) || 0;
 
     // 1. Demander confirmation
     if (confirm(`As-tu vraiment atteint le Palier majeur : "${description}" ?\n\n(Gain unique : ${xpNumeric} XP)`)) {
-        
+
         // 2. Appeler l'API pour marquer comme "Atteint?" = TRUE
         const success = await markMilestoneAsDone(description); // (Depuis api.js)
 
@@ -580,7 +583,7 @@ async function completeMilestone(description, xp) {
 async function handleDeleteQuest(questName) {
     // Confirmation
     if (confirm(`Veux-tu vraiment bannir la quête : "${questName}" ?\n(Cette action est irréversible)`)) {
-        
+
         const success = await deleteQuest(questName);
 
         if (success) {
@@ -605,7 +608,7 @@ async function handleDeleteQuest(questName) {
 async function handleDeleteMilestone(description) {
     // Confirmation
     if (confirm(`Veux-tu vraiment bannir le Palier : "${description}" ?\n(Cette action est irréversible)`)) {
-        
+
         const success = await deleteMilestone(description);
 
         if (success) {

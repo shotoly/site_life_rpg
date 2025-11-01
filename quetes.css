@@ -1,0 +1,23 @@
+#quests-list {
+    margin-top: 20px;
+}
+
+.quest-item {
+    background-color: #3b3b64;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.quest-info {
+    flex-grow: 1;
+}
+
+.quest-item.quest-done {
+    opacity: 0.5;
+    /* Tu pourrais ajouter d'autres styles ici, comme : */
+    /* text-decoration: line-through; */
+}
