@@ -194,14 +194,12 @@ function showToast(message, type = 'info') {
 
     // Style pour le faire apparaître (après un court délai)
     setTimeout(() => {
-        toast.style.opacity = '1';
-        toast.style.transform = 'translate(-50%, 0)';
-    }, 100);
+        toast.classList.add('show'); 
+}, 100)
 
     // Fait disparaître le toast après 3 secondes
     setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translate(-50%, -20px)';
+        toast.classList.remove('show');
 
         // Supprime l'élément du DOM après la transition
         setTimeout(() => {

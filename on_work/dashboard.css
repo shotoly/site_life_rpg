@@ -1,0 +1,13 @@
+/* Barre d'XP */
+.xp-bar-container {
+    background-color: #3b3b64; 
+    height: 15px; 
+    border-radius: 5px;
+}
+
+.xp-bar {
+    background-color: #00bcd4; 
+    height: 100%; 
+    border-radius: 5px;
+    /* La largeur (width) sera gérée en inline */
+}
