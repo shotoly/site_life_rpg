@@ -112,6 +112,7 @@ async function handleCreateQuestSubmit(event) {
         // "" (G) est ignoré
         "Répétition": parseInt(repetition, 10),
         // "Statut" (I) est géré par api.js (mis à false)
+        "Type Barème": parseInt(repetition, 10),
     };
 
     console.log("Données envoyées à l'API (Objet):", questDataObject);

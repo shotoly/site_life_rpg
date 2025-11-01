@@ -1,49 +1,102 @@
 // --- api.js ---
 
-async function markQuestAsDone(questName) {
-    const updateData = {
+// --- REMPLACEMENT (dans api.js) ---
+
+/**
+ * Logique complète de complétion de quête.
+ * Gère l'ajout d'XP et la logique de répétition/décochage.
+ * @param {object} questObject - L'OBJET de quête complet (lu depuis l'API).
+ */
+async function completeQuest(questObject) {
+
+    // 1. Récupérer les données de la quête
+    const identifier = questObject.Quete;
+    const xpString = questObject["XP / Quête"] ? questObject["XP / Quête"].toString() : '0';
+    const xpNumeric = parseInt(xpString.replace(/[^0-9]/g, '')) || 0;
+    
+    const repetitionNeeded = parseInt(questObject["Répétition"]) || 1;
+    const frequency = questObject.Fréquence;
+    
+    // Assurer que le compteur (colonne G) est un nombre
+    let currentCount = parseInt(questObject[""]) || 0; // Colonne G est vide ""
+
+    // 2. Demander confirmation
+    if (!confirm(`Es-tu sûr d'avoir accompli : "${identifier}" ? (Gain potentiel de ${xpNumeric} XP)`)) {
+        return; // L'utilisateur a annulé
+    }
+
+    // --- DÉBUT DE LA LOGIQUE PORTÉE DEPUIS APPS SCRIPT ---
+
+    let newStatus = true; // Par défaut, la quête reste cochée
+    let newCounter = currentCount + 1;
+    let questIsFinished = true; // Indique si la quête doit être rechargée
+    
+    // 3. Logique de Répétition
+    if (frequency !== "Unique" && repetitionNeeded > 1) {
+        
+        if (newCounter < repetitionNeeded) {
+            // --- Pas encore terminé ---
+            newStatus = false; // On décoche la case
+            questIsFinished = false; // La quête n'est pas "finie", juste "progressée"
+            alert(`Progression : ${newCounter}/${repetitionNeeded} validée !`);
+
+        } else {
+            // --- C'est la dernière répétition ! ---
+            newCounter = repetitionNeeded; // Bloquer au max
+            newStatus = true; // Laisser la case cochée
+            alert(`Quête complétée (${newCounter}/${repetitionNeeded}) !`);
+        }
+    }
+    // Si c'est une quête simple (répétition = 1), newStatus reste TRUE.
+
+
+    // 4. Mettre à jour la feuille de Quête (Statut et Compteur)
+    const patchQuestUrl = `${BASE_API_URL}/Quete/${encodeURIComponent(identifier)}?sheet=${encodeURIComponent(SHEET_NAME_QUETES)}`;
+    const questUpdateData = {
         data: {
-            "Statut": true 
+            "Statut": newStatus,
+            "": newCounter // Met à jour la colonne G (Compteur)
         }
     };
     
-    // URL de PATCH: on cible la colonne 'Quete' de la feuille 'Répertoire des Quêtes'
-    const patchUrl = `${BASE_API_URL}/Quete/${encodeURIComponent(questName)}?sheet=${encodeURIComponent(SHEET_NAME_QUETES)}`;
-    
-    const patchResponse = await fetch(patchUrl, {
+    const questPatchResponse = await fetch(patchQuestUrl, {
         method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updateData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(questUpdateData)
     });
 
-    if (patchResponse.ok) {
-        console.log(`Statut de quête mis à jour pour ${questName}.`);
-    } else {
-        const errorBody = await patchResponse.text();
-        console.warn(`Impossible de sauvegarder l'état de la quête. Statut: ${patchResponse.status}.`, errorBody);
-        alert(`ÉCHEC PERSISTANCE ! (Code: ${patchResponse.status}). Vérifiez que PATCH est activé.`);
+    if (!questPatchResponse.ok) {
+        alert("ERREUR : Impossible de sauvegarder l'état de la quête.");
+        return; // Arrêter si la sauvegarde échoue
     }
-    return patchResponse.ok;
-}
 
-async function completeQuest(identifier, xp) {
-    const cleanedXpString = xp ? xp.toString().replace(/[^0-9]/g, '') : '0';
-    const xpNumeric = parseInt(cleanedXpString) || 0;
-
-    if (confirm(`Es-tu sûr d'avoir accompli : "${identifier}" ? (Gain potentiel de ${xpNumeric} XP)`)) {
-        
-        const success = await markQuestAsDone(identifier);
-
-        if (success) {
-            // Rechargement des données nécessaires pour l'affichage
-            await loadPlayerStats();
-            await loadQuests(); // Recharger les quêtes pour mettre à jour l'état visuel
-
-            alert(`Victoire ! ${identifier} accomplie ! L'XP a été ajouté à votre total.`);
+    // 5. Mettre à jour l'XP du Joueur
+    try {
+        const player = await getPlayerStats();
+        if (!player) {
+            alert("ERREUR : Joueur introuvable pour ajouter l'XP.");
+            return;
         }
+
+        const currentXP = parseInt(player["XP Actuelle"]) || 0;
+        const newTotalXP = currentXP + xpNumeric;
+
+        const xpSuccess = await updatePlayerXp(player.Nom, newTotalXP);
+
+        if (xpSuccess) {
+            alert(`Victoire ! ${xpNumeric} XP ajoutés ! Total : ${newTotalXP} XP.`);
+        } else {
+            alert("ERREUR : L'XP n'a pas pu être ajoutée.");
+        }
+
+    } catch (error) {
+        console.error("Erreur lors de la mise à jour de l'XP:", error);
+        alert("Erreur critique lors de la mise à jour de l'XP.");
     }
+
+    // 6. Recharger les données
+    await loadPlayerStats(); // Mettre à jour le dashboard
+    await loadQuests(); // Mettre à jour la liste des quêtes (pour voir le décochage)
 }
 
 
@@ -74,7 +127,6 @@ async function updateArcName(arcID, newName) {
     return patchResponse.ok;
 }
 
-// --- Dans api.js ---
 
 /**
  * Ajoute une nouvelle quête (une ligne) à la feuille 'Répertoire des Quêtes'.
@@ -87,7 +139,6 @@ async function createQuest(questDataObject) {
         data: {
             ...questDataObject,
             "Statut": false, // Une nouvelle quête n'est pas faite
-            "XP / Quête": null // Laisse la formule Google Sheet calculer l'XP
         }
     };
 
@@ -247,3 +298,39 @@ async function deleteMilestone(description) {
         return false;
     }
 }
+
+async function getPlayerStats() {
+    // On suppose qu'il n'y a qu'une seule ligne de joueur
+    const response = await fetch(PLAYER_API_URL);
+    if (!response.ok) {
+        console.error("Impossible de charger les stats du joueur.");
+        return null;
+    }
+    const data = await response.json();
+    // On retourne le premier (et unique) objet joueur
+    return data[0]; 
+}
+
+/**
+ * Met à jour l'XP du joueur dans la feuille.
+ * @param {string} playerName - Le nom du joueur (la clé de recherche).
+ * @param {number} newTotalXp - La nouvelle valeur d'XP.
+ */
+async function updatePlayerXp(playerName, newTotalXp) {
+    const patchUrl = `${BASE_API_URL}/Nom/${encodeURIComponent(playerName)}?sheet=${encodeURIComponent(SHEET_NAME_JOUEUR)}`;
+    
+    const updateData = {
+        data: {
+            "XP Actuelle": newTotalXp
+        }
+    };
+
+    const patchResponse = await fetch(patchUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+    });
+
+    return patchResponse.ok;
+}
+
