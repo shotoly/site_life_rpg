@@ -14,9 +14,9 @@
 <body>
     <div class="container">
         <div class="tabs-menu">
-            <button class="tab-button active" data-tab="dashboard"><img src="image\maison.svg" ></img></button>
-            <button class="tab-button" data-tab="quests"><img src="image\quete.svg" ></img></button>
-            <button class="tab-button" data-tab="milestones"><img src="image\palier.svg" ></img></button>
+            <button class="tab-button active" data-tab="dashboard"><img src="image\maison.svg"></img></button>
+            <button class="tab-button" data-tab="quests"><img src="image\quete.svg"></img></button>
+            <button class="tab-button" data-tab="milestones"><img src="image\palier.svg"></img></button>
         </div>
 
         <div id="dashboard" class="tab-content active">
@@ -26,66 +26,84 @@
 
 
         <div id="quests" class="tab-content">
-            <h2>Gestion des Quêtes</h2>
-            <div id="quests-list">
+
+            <div class="quetes_container">
+                <h2>Gestion des Quêtes</h2>
+
+                <button id="btn-open-quest-modal" class="pixel-button">
+                    <i class="fas fa-plus-circle"></i>
+                    <img src="image/Bouton_pixell.svg" alt="Créer une Nouvelle Quête" />
+                </button>
+
+
+                <div id="quests-list">
+                </div>
             </div>
-            <div class="quest-creator-container">
-                <h3><i class="fas fa-scroll"></i> Créer une Nouvelle Quête</h3>
 
-                <form id="form-create-quest">
 
-                    <div class="form-group">
-                        <label for="quest-name-input">Nom de la Quête :</label>
-                        <input type="text" id="quest-name-input" placeholder="Ex: Lire 10 pages" required>
+            <div id="modal-quest-overlay" class="modal-overlay">
+                <div class="modal-content">
+
+                    <img src="image/Tableau_des_quêtes.png" alt="Tableau de quête" class="modal-bg-image">
+
+                    <div class="quest-creator-container">
+
+                        <button id="btn-close-quest-modal" class="modal-close-btn">&times;</button>
+                        <h3><i class="fas fa-scroll"></i> Créer une Nouvelle Quête</h3>
+
+                        <form id="form-create-quest">
+
+                            <div class="form-group">
+                                <label for="quest-name-input">Nom de la Quête :</label>
+                                <input type="text" id="quest-name-input" placeholder="Ex: Lire 10 pages" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="quest-arc-select">Arc Narratif :</label>
+                                <select id="quest-arc-select" required>
+                                    <option value="">Chargement des arcs...</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="quest-frequency-select">Fréquence :</label>
+                                <select id="quest-frequency-select" required>
+                                    <option value="Unique">Unique</option>
+                                    <option value="Journalière">Journalière</option>
+                                    <option value="Hebdomadaire">Hebdomadaire</option>
+                                    <option value="Mensuelle">Mensuelle</option>
+                                    <option value="Annuelle">Annuelle</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="quest-repetition-input">Répétition sur la période :</label>
+                                <input type="number" id="quest-repetition-input" value="1" min="1" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="quest-intensity-select">Intensité (Difficulté) :</label>
+                                <select id="quest-intensity-select" required>
+                                    <option value="1">1 (Facile)</option>
+                                    <option value="2">2 (Moyen)</option>
+                                    <option value="3">3 (Difficile)</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" id="btn-submit-quest" class="btn-create-quest" disabled>
+                                <i class="fas fa-spinner fa-spin"></i> Chargement...
+                            </button>
+
+                        </form>
                     </div>
-
-                    <div class="form-group">
-                        <label for="quest-arc-select">Arc Narratif :</label>
-                        <select id="quest-arc-select" required>
-                            <option value="">Chargement des arcs...</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="quest-frequency-select">Fréquence :</label>
-                        <select id="quest-frequency-select" required>
-                            <option value="Unique">Unique</option>
-                            <option value="Journalière">Journalière</option>
-                            <option value="Hebdomadaire">Hebdomadaire</option>
-                            <option value="Mensuelle">Mensuelle</option>
-                            <option value="Annuelle">Annuelle</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="quest-repetition-input">Répétition sur la période :</label>
-                        <input type="number" id="quest-repetition-input" value="1" min="1" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="quest-intensity-select">Intensité (Difficulté) :</label>
-                        <select id="quest-intensity-select" required>
-                            <option value="1">1 (Facile)</option>
-                            <option value="2">2 (Moyen)</option>
-                            <option value="3">3 (Difficile)</option>
-                        </select>
-                    </div>
-
-                    <button type="submit" id="btn-submit-quest" class="btn-create-quest" disabled>
-                        <i class="fas fa-spinner fa-spin"></i> Chargement...
-                    </button>
-
-                </form>
-            </div>
+                </div>
+            </div class="modal-inner">
             <hr>
             <h3>Gestion des Arcs Narratifs</h3>
             <p>Modifiez les noms de vos catégories de vie.</p>
             <ul id="arc-list-manager" class="arc-manager">
             </ul>
-
-            
         </div>
-
         <div id="milestones" class="tab-content">
             <h2>Sanctuaire des Paliers</h2>
 
@@ -114,7 +132,7 @@
                     </select>
                 </div>
 
-                
+
                 <button type="submit" class="btn-create-quest">
                     <i class="fas fa-plus-circle"></i> Ajouter le Palier
                 </button>
@@ -133,6 +151,7 @@
     <script src="api.js"></script>
     <script src="render.js"></script>
     <script src="main.js"></script>
+    <script src="UI.js" defer></script>
 </body>
 
 </html>

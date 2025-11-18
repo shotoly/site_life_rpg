@@ -22,10 +22,5 @@
 }
 
 .player-avatar {
-    width: 60px;
     height: 60px;
-    border-radius: 50%; /* Un avatar rond, c'est classe ! */
-    border: 3px solid #ffe66d; /* Une bordure dorée (couleur titre) */
-    object-fit: cover;    /* S'assure que l'image remplit le cercle */
-    background-color: #3b3b64; /* Couleur de fond si l'image est transparente */
 }

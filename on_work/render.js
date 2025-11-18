@@ -37,7 +37,7 @@ async function loadPlayerStats() {
             statsElement.innerHTML = `
                 
                 <div class="player-header">
-                    <img src="${playerAvatarUrl}" alt="Avatar" class="player-avatar">
+                    <img src="image/player.png" alt="Avatar" class="player-avatar">
                     <h2>${playerName} <small>(${currentLevelName})</small></h2>
                 </div>
                 

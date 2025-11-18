@@ -33,9 +33,6 @@ async function initApp() {
 
 // --- GESTION DES ONGLETS (TABS) ---
 
-/**
- * Configure la navigation par onglets (Quêtes, Paliers, etc.)
- */
 function setupTabs() {
     const buttons = document.querySelectorAll('.tab-button');
     const contents = document.querySelectorAll('.tab-content');
@@ -76,6 +73,7 @@ function setupEventListeners() {
     } else {
         console.warn("Le formulaire 'form-create-milestone' n'a pas été trouvé.");
     }
+
 }
 
 /**
