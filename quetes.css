@@ -21,3 +21,151 @@
     /* Tu pourrais ajouter d'autres styles ici, comme : */
     /* text-decoration: line-through; */
 }
+
+
+/* Fichier : quetes.css (à ajouter à la fin) */
+
+/* --- STYLES POUR LA MODALE DE QUÊTE --- */
+
+.modal-overlay {
+    /* Cache par défaut */
+    display: none;
+
+    /* Apparence */
+    position: fixed;
+    /* Reste en place même au scroll */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    /* Fond semi-transparent */
+    z-index: 1000;
+    /* Au-dessus de tout */
+}
+
+/* Quand la modale est active (via JS) */
+.modal-overlay.active {
+    display: flex;
+    /* La rend visible */
+    justify-content: center;
+    /* Centre horizontalement */
+    align-items: center;
+    /* Centre verticalement */
+}
+
+.modal-content {
+    width: 20vw;
+    display: inline-block;
+    max-width: 95vw;
+    max-height: 95vh;
+    position: relative;
+
+}
+
+.modal-content .quest-creator-container {
+    /* 1. On le met en superposition EXACTE de l'image */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    /* 2. On centre le formulaire à l'intérieur */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* align-items: center; */ /* (Optionnel, si tu veux centrer horizontalement) */
+
+    /* 3. On remet le padding que l'on avait enlevé de .modal-content */
+    padding: 40px; 
+    box-sizing: border-box; /* Pour que le padding ne casse pas la taille */
+
+    /* 4. Au cas où le formulaire est TROP long pour l'image */
+    overflow-y: auto; 
+}
+
+.modal-bg-image {
+    display: block;
+    /* Empêche les espaces blancs sous l'image */
+    width: 100%;
+    /* L'image prend 100% du conteneur .modal-content */
+    height: auto;
+    image-rendering: pixelated;
+    /* Garde ton style pixel-art */
+}
+
+
+
+.modal-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+.modal-inner {
+    position: absolute;
+    inset: 0;
+    /* couvre la zone de la modal-content */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    /* si tu veux que seule l'image capte les events, sinon false */
+    padding: 20px;
+}
+
+.modal-inner * {
+    pointer-events: auto;
+}
+
+
+
+
+.pixel-button {
+    width: 14rem;
+    height: auto;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    /* Supprime toute bordure */
+}
+
+.quetes_container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+@media (max-width: 600px) {
+
+    /* ...alors ces règles s'appliquent et écrasent les styles par défaut. */
+
+    .modal-content {
+        /* On remplace la largeur fixe (ex: 700px) 
+           par une largeur flexible (90% de l'écran du tel) */
+        width: 80vw;
+        padding: 0px;
+    }
+
+    .modal-content .quest-creator-container {
+        /* Sur petit écran, 40px de padding c'est trop.
+           On le réduit pour laisser de la place au formulaire. */
+        padding: 45px;
+    }
+
+    /* Tu peux ajouter ici d'autres règles pour mobile */
+    .pixel-button {
+        /* Par exemple, réduire la taille du bouton d'ajout */
+        width: 10rem;
+    }
+}

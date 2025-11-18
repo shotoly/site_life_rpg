@@ -1,9 +1,7 @@
 // --- config.js ---
 
 // Identifiant unique SheetDB (doit être le même que dans app.js)
-const SHEET_ID = "9uyx13661dl1l"; 
-const BASE_API_URL = `https://sheetdb.io/api/v1/${SHEET_ID}`; 
-
+const BASE_API_URL = "https://script.google.com/macros/s/AKfycbyLB11__X4e7V_7x9eXJV-SI65dzxOn1iRYortqKldC4qmICvJXkgGpOL6Cowtz05izmA/exec";
 
 // Noms des feuilles Google Sheets
 const SHEET_NAME_QUETES = "Répertoire des Quêtes";
@@ -16,3 +14,4 @@ const QUOTES_API_URL = `${BASE_API_URL}?sheet=${encodeURIComponent(SHEET_NAME_QU
 const PLAYER_API_URL = `${BASE_API_URL}?sheet=${encodeURIComponent(SHEET_NAME_JOUEUR)}`;
 const PALIERS_API_URL = `${BASE_API_URL}?sheet=${encodeURIComponent(SHEET_NAME_PALIERS)}`;
 const ARCS_API_URL = `${BASE_API_URL}?sheet=${encodeURIComponent(SHEET_NAME_ARCS)}`;
+

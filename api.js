@@ -1,6 +1,4 @@
-// --- api.js ---
-
-// --- REMPLACEMENT (dans api.js) ---
+// --- api.js (Version Furtive : Tunneling POST + Text/Plain) ---
 
 /**
  * Logique complète de complétion de quête.
@@ -13,10 +11,10 @@ async function completeQuest(questObject) {
     const identifier = questObject.Quete;
     const xpString = questObject["XP / Quête"] ? questObject["XP / Quête"].toString() : '0';
     const xpNumeric = parseInt(xpString.replace(/[^0-9]/g, '')) || 0;
-    
+
     const repetitionNeeded = parseInt(questObject["Répétition"]) || 1;
     const frequency = questObject.Fréquence;
-    
+
     // Assurer que le compteur (colonne G) est un nombre
     let currentCount = parseInt(questObject[""]) || 0; // Colonne G est vide ""
 
@@ -25,15 +23,15 @@ async function completeQuest(questObject) {
         return; // L'utilisateur a annulé
     }
 
-    // --- DÉBUT DE LA LOGIQUE PORTÉE DEPUIS APPS SCRIPT ---
+    // --- DÉBUT DE LA LOGIQUE ---
 
     let newStatus = true; // Par défaut, la quête reste cochée
     let newCounter = currentCount + 1;
     let questIsFinished = true; // Indique si la quête doit être rechargée
-    
+
     // 3. Logique de Répétition
     if (frequency !== "Unique" && repetitionNeeded > 1) {
-        
+
         if (newCounter < repetitionNeeded) {
             // --- Pas encore terminé ---
             newStatus = false; // On décoche la case
@@ -47,21 +45,24 @@ async function completeQuest(questObject) {
             alert(`Quête complétée (${newCounter}/${repetitionNeeded}) !`);
         }
     }
-    // Si c'est une quête simple (répétition = 1), newStatus reste TRUE.
-
 
     // 4. Mettre à jour la feuille de Quête (Statut et Compteur)
-    const patchQuestUrl = `${BASE_API_URL}/Quete/${encodeURIComponent(identifier)}?sheet=${encodeURIComponent(SHEET_NAME_QUETES)}`;
+    // MODIFICATION FURTIVE : On ajoute &method=PATCH à l'URL
+    const patchQuestUrl = QUOTES_API_URL + "&method=PATCH";
+
     const questUpdateData = {
         data: {
+            "find_key_column": "Quete",
+            "find_key_value": identifier,
             "Statut": newStatus,
-            "": newCounter // Met à jour la colonne G (Compteur)
+            "": newCounter
         }
     };
-    
+
+    // MODIFICATION FURTIVE : Envoi en POST avec text/plain
     const questPatchResponse = await fetch(patchQuestUrl, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(questUpdateData)
     });
 
@@ -103,17 +104,20 @@ async function completeQuest(questObject) {
 async function updateArcName(arcID, newName) {
     const updateData = {
         data: {
+            "find_key_column": "ID Arc",
+            "find_key_value": arcID,
             "Nom Modifiable": newName
         }
     };
 
-    // Cible la feuille Arcs, colonne 'ID Arc', avec la valeur arcID
-    const patchUrl = `${BASE_API_URL}/ID Arc/${encodeURIComponent(arcID)}?sheet=${encodeURIComponent(SHEET_NAME_ARCS)}`;
-    
+    // MODIFICATION FURTIVE : URL + méthode PATCH
+    const patchUrl = ARCS_API_URL + "&method=PATCH";
+
+    // MODIFICATION FURTIVE : POST + text/plain
     const patchResponse = await fetch(patchUrl, {
-        method: 'PATCH',
+        method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'text/plain'
         },
         body: JSON.stringify(updateData)
     });
@@ -130,11 +134,10 @@ async function updateArcName(arcID, newName) {
 
 /**
  * Ajoute une nouvelle quête (une ligne) à la feuille 'Répertoire des Quêtes'.
- * @param {Object} questDataObject - Un OBJET de données (pas un array)
+ * @param {Object} questDataObject - Un OBJET de données
  */
 async function createQuest(questDataObject) {
-    
-    // On prépare les données pour la méthode POST de SheetDB
+
     const dataToSend = {
         data: {
             ...questDataObject,
@@ -142,14 +145,14 @@ async function createQuest(questDataObject) {
         }
     };
 
-    // URL de POST: on cible la feuille 'Répertoire des Quêtes'
     const postUrl = `${BASE_API_URL}?sheet=${encodeURIComponent(SHEET_NAME_QUETES)}`;
-    
+
     try {
+        // MODIFICATION FURTIVE : POST + text/plain
         const postResponse = await fetch(postUrl, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'text/plain'
             },
             body: JSON.stringify(dataToSend)
         });
@@ -158,8 +161,8 @@ async function createQuest(questDataObject) {
             console.log(`Nouvelle Quête créée: ${questDataObject.Quete}`);
             return true;
         } else {
-            const errorBody = await postResponse.text();
-            console.error(`Impossible de créer la quête. Statut: ${postResponse.status}.`, errorBody);
+            // Note: text() peut échouer si la réponse est vide, mais pour le debug c'est ok
+            console.error(`Impossible de créer la quête. Statut: ${postResponse.status}.`);
             return false;
         }
     } catch (error) {
@@ -167,12 +170,11 @@ async function createQuest(questDataObject) {
         return false;
     }
 }
+
 /**
  * @param {Object} milestoneData 
  */
 async function createMilestone(milestoneData) {
-    // milestoneData ex: { "Arc Associé": "Arc II", "Description": "Test", ... }
-
     const dataToSend = {
         data: {
             ...milestoneData,
@@ -180,13 +182,13 @@ async function createMilestone(milestoneData) {
         }
     };
 
-    // URL de POST: on cible la feuille 'Sanctuaire des Paliers'
     const postUrl = `${BASE_API_URL}?sheet=${encodeURIComponent(SHEET_NAME_PALIERS)}`;
-    
+
+    // MODIFICATION FURTIVE : POST + text/plain
     const postResponse = await fetch(postUrl, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'text/plain'
         },
         body: JSON.stringify(dataToSend)
     });
@@ -196,13 +198,11 @@ async function createMilestone(milestoneData) {
         alert("Palier ajouté !");
         return true;
     } else {
-        const errorBody = await postResponse.text();
-        console.error(`Impossible de créer le palier. Statut: ${postResponse.status}.`, errorBody);
+        console.error(`Impossible de créer le palier. Statut: ${postResponse.status}.`);
         alert(`ÉCHEC CRÉATION PALIER ! (Code: ${postResponse.status}).`);
         return false;
     }
 }
-
 
 
 /**
@@ -210,24 +210,22 @@ async function createMilestone(milestoneData) {
  * @param {string} identifier - La description unique du Palier.
  */
 async function markMilestoneAsDone(identifier) {
-    // L'identifiant est la colonne "Description"
-    const keyColumn = "Description";
-    
-    // [CORRECTION]
-    // L'URL doit suivre le format: /API_ID/Nom_Colonne/Valeur
-    // au lieu de ?key=...&value=...
-    const updateUrl = `${BASE_API_URL}/${encodeURIComponent(keyColumn)}/${encodeURIComponent(identifier)}?sheet=${encodeURIComponent(SHEET_NAME_PALIERS)}`;
-    
+    // MODIFICATION FURTIVE : URL + méthode PATCH
+    const updateUrl = PALIERS_API_URL + "&method=PATCH";
+
     const dataToSend = {
         data: {
-            "Atteint?": true // La colonne à mettre à jour
+            "find_key_column": "Description",
+            "find_key_value": identifier,
+            "Atteint?": true
         }
     };
-    
+
+    // MODIFICATION FURTIVE : POST + text/plain
     const patchResponse = await fetch(updateUrl, {
-        method: 'PATCH',
+        method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'text/plain'
         },
         body: JSON.stringify(dataToSend)
     });
@@ -236,38 +234,42 @@ async function markMilestoneAsDone(identifier) {
         console.log(`Palier marqué comme atteint: ${identifier}`);
         return true;
     } else {
-        const errorBody = await patchResponse.text();
-        // L'erreur 405 n'apparaîtra plus ici
-        console.error(`Impossible de mettre à jour le Palier. Statut: ${patchResponse.status}.`, errorBody);
+        console.error(`Impossible de mettre à jour le Palier. Statut: ${patchResponse.status}.`);
         return false;
     }
 }
 
-// --- Ajout dans api.js ---
+// --- Suppressions ---
 
 /**
  * Supprime une Quête en utilisant sa description (Quete) comme clé.
  * @param {string} questName - L'identifiant (la description) de la quête.
  */
 async function deleteQuest(questName) {
-    const keyColumn = "Quete";
-    
-    // L'URL pour DELETE est : /API_ID/Colonne_Clé/Valeur_Clé
-    const deleteUrl = `${BASE_API_URL}/${encodeURIComponent(keyColumn)}/${encodeURIComponent(questName)}?sheet=${encodeURIComponent(SHEET_NAME_QUETES)}`;
+    // MODIFICATION FURTIVE : URL + méthode DELETE
+    const deleteUrl = QUOTES_API_URL + "&method=DELETE";
 
-    const deleteResponse = await fetch(deleteUrl, {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json'
+    const dataToSend = {
+        data: {
+            "find_key_column": "Quete",
+            "find_key_value": questName,
         }
+    };
+
+    // MODIFICATION FURTIVE : POST + text/plain
+    const deleteResponse = await fetch(deleteUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'text/plain'
+        },
+        body: JSON.stringify(dataToSend)
     });
 
     if (deleteResponse.ok) {
         console.log(`Quête supprimée: ${questName}`);
         return true;
     } else {
-        const errorBody = await deleteResponse.text();
-        console.error(`Impossible de supprimer la quête. Statut: ${deleteResponse.status}.`, errorBody);
+        console.error(`Impossible de supprimer la quête. Statut: ${deleteResponse.status}.`);
         return false;
     }
 }
@@ -277,38 +279,43 @@ async function deleteQuest(questName) {
  * @param {string} description - L'identifiant (la description) du palier.
  */
 async function deleteMilestone(description) {
-    const keyColumn = "Description";
-    
-    // L'URL pour DELETE
-    const deleteUrl = `${BASE_API_URL}/${encodeURIComponent(keyColumn)}/${encodeURIComponent(description)}?sheet=${encodeURIComponent(SHEET_NAME_PALIERS)}`;
+    // MODIFICATION FURTIVE : URL + méthode DELETE
+    const deleteUrl = PALIERS_API_URL + "&method=DELETE";
 
-    const deleteResponse = await fetch(deleteUrl, {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json'
+    const dataToSend = {
+        data: {
+            "find_key_column": "Description",
+            "find_key_value": description,
         }
+    };
+
+    // MODIFICATION FURTIVE : POST + text/plain
+    const deleteResponse = await fetch(deleteUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'text/plain'
+        },
+        body: JSON.stringify(dataToSend)
     });
 
     if (deleteResponse.ok) {
         console.log(`Palier supprimé: ${description}`);
         return true;
     } else {
-        const errorBody = await deleteResponse.text();
-        console.error(`Impossible de supprimer le palier. Statut: ${deleteResponse.status}.`, errorBody);
+        console.error(`Impossible de supprimer le palier. Statut: ${deleteResponse.status}.`);
         return false;
     }
 }
 
 async function getPlayerStats() {
-    // On suppose qu'il n'y a qu'une seule ligne de joueur
+    // Le GET reste un GET standard (Fonctionne déjà)
     const response = await fetch(PLAYER_API_URL);
     if (!response.ok) {
         console.error("Impossible de charger les stats du joueur.");
         return null;
     }
     const data = await response.json();
-    // On retourne le premier (et unique) objet joueur
-    return data[0]; 
+    return data[0];
 }
 
 /**
@@ -317,20 +324,23 @@ async function getPlayerStats() {
  * @param {number} newTotalXp - La nouvelle valeur d'XP.
  */
 async function updatePlayerXp(playerName, newTotalXp) {
-    const patchUrl = `${BASE_API_URL}/Nom/${encodeURIComponent(playerName)}?sheet=${encodeURIComponent(SHEET_NAME_JOUEUR)}`;
-    
+    // MODIFICATION FURTIVE : URL + méthode PATCH
+    const patchUrl = PLAYER_API_URL + "&method=PATCH";
+
     const updateData = {
         data: {
+            "find_key_column": "Nom",
+            "find_key_value": playerName,
             "XP Actuelle": newTotalXp
         }
     };
 
+    // MODIFICATION FURTIVE : POST + text/plain
     const patchResponse = await fetch(patchUrl, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(updateData)
     });
 
     return patchResponse.ok;
 }
-
