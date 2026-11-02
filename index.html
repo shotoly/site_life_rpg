@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life RPG | L'Aventure de Ta Vie (Modern & 8-bit)</title>
+    
+    <!-- Polices Mixtes : Pixel Art (Press Start 2P, VT323) + Moderne Sans-Serif (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Press+Start+2P&family=VT323&display=swap&subset=latin,latin-ext" rel="stylesheet">
+    
+    <!-- Favicon Pixel RPG -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='7' y='1' width='2' height='2' fill='%23f59e0b'/><rect x='6' y='3' width='4' height='2' fill='%23fde68a'/><rect x='5' y='5' width='6' height='2' fill='%2310b981'/><rect x='7' y='7' width='2' height='7' fill='%230f172a'/><rect x='4' y='10' width='8' height='2' fill='%2338bdf8'/></svg>">
+    
+    <!-- Feuille de Style Hybride -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Pré-résolution du thème clair/sombre AVANT le premier rendu (anti-FOUC) -->
+    <script>
+        (function () {
+            try {
+                const stored = localStorage.getItem('life_rpg_theme');
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const theme = stored || (prefersDark ? 'dark' : 'light');
+                document.documentElement.setAttribute('data-theme', theme);
+            } catch (e) {}
+        })();
+    </script>
+</head>
+<body class="theme-plaine">
+    <!-- Canvas plein écran pour confettis et particules au clic -->
+    <canvas id="particleCanvas" class="particle-canvas"></canvas>
+
+    <!-- ======================================================================
+         1. NAVBAR SUPÉRIEURE (STYLE CODÉDEX AUTHENTIQUE)
+         ====================================================================== -->
+    <header class="modern-navbar">
+        <div class="nav-wrapper">
+            <!-- 1. Logo Codédex -->
+            <a href="#" class="nav-brand" id="brandHomeLink" title="Life RPG Accueil">
+                <img src="assets/img/tableau_des_quetes.png" class="brand-pixel-img" alt="Life RPG">
+                <span class="brand-title">LIFE RPG</span>
+                <span class="brand-version-badge">v2.0</span>
+            </a>
+
+            <!-- 2. Les 2 Onglets Principaux (Quêtes VS Personnage/Stats) -->
+            <nav class="nav-main-tabs" aria-label="Navigation principale">
+                <button class="nav-tab-pill active" id="tabBtnQuests" data-tab="quests">
+                    <img src="assets/img/questpaper.png" class="pixel-tab-icon" alt="Quêtes">
+                    <span>Quêtes</span>
+                </button>
+                <button class="nav-tab-pill" id="tabBtnCharacter" data-tab="character">
+                    <img src="assets/img/bouclier_1.svg" class="pixel-tab-icon" alt="Personnage">
+                    <span>Personnage & Stats</span>
+                </button>
+            </nav>
+
+            <!-- 3. Groupe Droit : Compteurs + Contrôles + Bouton Jaune Codédex -->
+            <div class="nav-right-group">
+                <!-- Pièces d'Or avec icône pixel art -->
+                <div class="nav-stat-pill gold-pill" title="Pièces d'or accumulées">
+                    <svg class="pixel-art-svg" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M5 1h6v1h2v1h1v2h1v6h-1v2h-1v1h-2v1H5v-1H3v-1H2v-2H1V5h1V3h1V2h2V1zm0 2H4v1H3v2H2v4h1v2h1v1h2v1h6v-1h1v-1h1v-2h1V6h-1V4h-1V3h-1V2H5v1zm2 2h2v1h1v4H9v1H7v-1H6V6h1V5zm1 2H7v2h2V7z" fill="#B45309"/>
+                        <path d="M5 2h6v1h2v2h1v6h-1v2h-2v1H5v-1H3v-2H2V5h1V3h2V2z" fill="#FBBF24"/>
+                        <path d="M5 3h4v1h1v2h1v4h-1v1H9v1H5v-1H4V9h1V5H4V4h1V3z" fill="#FEF08A"/>
+                        <path d="M7 6h2v4H7V6z" fill="#D97706"/>
+                    </svg>
+                    <span class="stat-number" id="goldCount">45</span>
+                </div>
+
+                <!-- Série consécutive avec flamme pixel art -->
+                <div class="nav-stat-pill streak-pill" title="Série de jours actifs consécutifs">
+                    <img src="assets/img/flame_pixel_art.png" class="pixel-stat-icon" alt="Série">
+                    <span class="stat-number" id="streakCount">3j</span>
+                </div>
+
+                <!-- Statut Cloud Sync (Supabase / Local) -->
+                <div class="cloud-sync-pill" id="cloudSyncStatus" title="Statut de connexion à Supabase. Cliquez pour afficher les détails et synchroniser.">
+                    <span class="sync-dot"></span>
+                    <span class="sync-text">Initialisation...</span>
+                </div>
+
+                <!-- Son 8-bit ON/OFF -->
+                <button class="nav-icon-toggle" id="audioToggleBtn" title="Activer / Désactiver les sons 8-bit">
+                    <img src="assets/img/enceinte_pixel_art.png" id="audioIconImg" class="pixel-nav-icon" alt="Son">
+                </button>
+
+                <!-- Bascule Light / Dark -->
+                <button class="nav-btn-secondary" id="themeToggleBtn" title="Basculer entre le mode clair et le mode sombre">
+                    <span id="themeToggleLabel"><img src="assets/img/lune.png" class="pixel-btn-icon" alt="Nuit"> NUIT</span>
+                </button>
+
+                <!-- Avatar cliquable (Recadré sur la tête du personnage) -->
+                <div class="nav-avatar-circle" id="navPlayerCapsule" title="Cliquer pour afficher la fiche de personnage">
+                    <img src="assets/img/player.png" alt="Tête de l'Aventurier" id="navAvatarImg" class="nav-avatar-img is-player-sprite">
+                </div>
+
+                <!-- Bouton Création Rapide (Style bouton jaune Codédex) -->
+                <button class="codedex-btn-yellow" id="navNewQuestBtn">
+                    <span>+ Nouvelle Quête</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ======================================================================
+         2. LAYOUT DASHBOARD CODÉDEX (2 COLONNES : PRINCIPALE + SIDEBAR)
+         ====================================================================== -->
+    <main class="codedex-dashboard-layout">
+
+        <!-- ==============================================================
+             COLONNE DE GAUCHE : CONTENU PRINCIPAL (QUÊTES / PERSONNAGE)
+             ============================================================== -->
+        <div class="codedex-main-col">
+
+            <!-- 1. BULLE DE DIALOGUE MASCOTTE FÉE -->
+            <div class="codedex-mascot-row">
+                <div class="codedex-mascot-wrapper">
+                    <img src="assets/img/fairy.png" class="codedex-mascot-img fairy-mascot-img" alt="Fée Guide">
+                </div>
+                <div class="codedex-dialogue-bubble">
+                    <span>Hey! Listen <strong class="bubble-user" id="bubblePlayerName">@Aventurier</strong>! Ton épopée t'attend, choisis ta quête !</span>
+                </div>
+            </div>
+
+            <!-- 2. CARTE D'ACCUEIL CODÉDEX "WELCOME TO LIFE RPG" -->
+            <div class="codedex-welcome-card" id="welcomeHeroCard">
+                <div class="welcome-sprites-row">
+                    <img src="assets/img/codedex_boy.png" class="welcome-sprite-item" alt="Héros">
+                    <img src="assets/img/tableau_des_quetes.png" class="welcome-sprite-item" alt="Tableau RPG">
+                    <img src="assets/img/fairy.png" class="welcome-sprite-item fairy-mascot-img" alt="Fée">
+                </div>
+                <h2 class="welcome-title-retro">Welcome to Life RPG!</h2>
+                <p class="welcome-subtitle">
+                    Ton voyage d'aventurier commence ici — accomplis tes quêtes réelles, accumule de l'or et forge tes compétences de vie.
+                </p>
+                <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                    <button class="codedex-btn-blue" id="heroOpenQuestBtn">
+                        <img src="assets/img/questpaper.png" class="btn-pixel-icon" width="16" height="16" alt="">
+                        <span>Proclamer une Quête</span>
+                    </button>
+                    <button class="codedex-btn-dark" id="heroSwitchToQuestsBtn" style="width: auto; padding: 12px 20px;">
+                        <span>Voir mes Quêtes en cours ↓</span>
+                    </button>
+                </div>
+                <div class="hero-banner-pills" style="margin-top: 22px; justify-content: center;">
+                    <span class="banner-pill-label" style="font-size: 0.72rem; color: #94a3b8;">Décor d'ambiance :</span>
+                    <button class="banner-pill active" data-theme="theme-plaine"><img src="assets/img/sprout_pixelart.png" class="pill-pixel-icon" alt=""> Plaine</button>
+                    <button class="banner-pill" data-theme="theme-montage">🏔️ Montagne</button>
+                    <button class="banner-pill" data-theme="theme-ocean">🌊 Océan</button>
+                    <button class="banner-pill" data-theme="theme-marin">🐠 Fond Marin</button>
+                </div>
+            </div>
+
+            <!-- 3. ONGLET 1 : LE JOURNAL DES QUÊTES -->
+            <section class="tab-view-container active" id="viewQuestsSection">
+                <!-- En-tête de section -->
+                <div class="section-header-block">
+                    <div class="header-titles">
+                        <h2 class="section-title-retro">JOURNAL DES QUÊTES</h2>
+                        <p class="section-subtitle-modern">
+                            Suis tes objectifs, maintiens tes habitudes et triomphe des grands défis.
+                        </p>
+                    </div>
+                    
+                    <div class="header-action-wrap">
+                        <button class="btn-primary-mint" id="openNewQuestModalBtn">
+                            <span>+ Ajouter un Objectif</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- BARRE DE CONTRÔLES : FILTRES & RECHERCHE -->
+                <div class="filter-toolbar-card">
+                    <!-- Onglets par Type d'Objectif -->
+                    <div class="type-tabs-group">
+                        <button class="modern-tab-btn active" data-type="all">
+                            <img src="assets/img/etoile_pixel_art.png" class="tab-chip-icon" alt="">
+                            <span>Toutes (<span id="countAll">6</span>)</span>
+                        </button>
+                        <button class="modern-tab-btn" data-type="daily">
+                            <img src="assets/img/sprout_pixelart.png" class="tab-chip-icon" alt="">
+                            <span>Habitudes (<span id="countDaily">2</span>)</span>
+                        </button>
+                        <button class="modern-tab-btn" data-type="unique">
+                            <img src="assets/img/questpaper.png" class="tab-chip-icon" alt="">
+                            <span>Quêtes Uniques (<span id="countUnique">3</span>)</span>
+                        </button>
+                        <button class="modern-tab-btn" data-type="boss">
+                            <img src="assets/img/crown_pixel_art.png" class="tab-chip-icon" alt="">
+                            <span>Boss & Paliers (<span id="countBoss">1</span>)</span>
+                        </button>
+                    </div>
+
+                    <!-- Sous-barre : Filtres par Tags & Recherche Texte -->
+                    <div class="sub-filter-row">
+                        <div class="tag-chips-scroll" id="tagChipsContainer">
+                            <button class="modern-tag-chip active" data-tag="all"># Tous les Arcs</button>
+                            <button class="modern-tag-chip" data-tag="Santé"><img src="assets/img/sprout_pixelart.png" class="chip-pixel-icon" alt=""> Santé</button>
+                            <button class="modern-tag-chip" data-tag="Code"><img src="assets/img/questpaper.png" class="chip-pixel-icon" alt=""> Code</button>
+                            <button class="modern-tag-chip" data-tag="Social"><img src="assets/img/taverne_1.svg" class="chip-pixel-icon" alt=""> Social</button>
+                            <button class="modern-tag-chip" data-tag="Créativité"><img src="assets/img/livre_1.svg" class="chip-pixel-icon" alt=""> Créativité</button>
+                            <button class="modern-tag-chip" data-tag="Aventure"><img src="assets/img/bouclier_1.svg" class="chip-pixel-icon" alt=""> Aventure</button>
+                        </div>
+
+                        <div class="search-and-status-group">
+                            <div class="modern-search-box">
+                                <span class="search-icon">🔍</span>
+                                <input type="text" id="questSearchInput" placeholder="Rechercher une quête..." class="modern-search-input">
+                            </div>
+
+                            <div class="status-segment-control">
+                                <button class="segment-btn active" id="filterStatusPending" data-status="pending">En cours</button>
+                                <button class="segment-btn" id="filterStatusCompleted" data-status="completed">Accomplies</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GRILLE DES CARTES DE QUÊTES MODERNES -->
+                <div class="quest-cards-grid" id="questCardsGrid">
+                    <!-- Rendu dynamique par script.js -->
+                </div>
+
+                <!-- État Vide Épuré -->
+                <div class="empty-quests-card" id="questEmptyState" style="display: none;">
+                    <div class="empty-icon-art">
+                        <svg class="pixel-art-svg" width="48" height="48" viewBox="0 0 16 16">
+                            <path fill="#15803d" d="M7 11h2v3H7zM5 14h6v1H5z"/>
+                            <path fill="#22c55e" d="M7 6h2v5H7zM4 7h3v2H4zM9 5h3v2H9z"/>
+                            <path fill="#4ade80" d="M3 5h3v2H3zM10 3h3v2h-3z"/>
+                            <path fill="#86efac" d="M4 4h2v1H4zM11 2h2v1h-2z"/>
+                            <path fill="#bbf7d0" d="M5 3h1v1H5zM12 1h1v1h-1z"/>
+                        </svg>
+                    </div>
+                    <h3 class="empty-title-retro">Prairie Paisible</h3>
+                    <p class="empty-desc-modern">Aucun objectif ne correspond à tes filtres. Plante une nouvelle graine d'aventure !</p>
+                    <button class="btn-primary-mint" id="emptyAddBtn">+ Créer un objectif</button>
+                </div>
+            </section>
+
+            <!-- 4. ONGLET 2 : PERSONNAGE & STATISTIQUES DES ARCS (JRPG STATUS SHEET) -->
+            <section class="tab-view-container jrpg-status-view" id="viewCharacterSection" style="display: none;">
+                
+                <!-- FEUILLE DE STATUT STYLE JRPG AUTHENTIQUE -->
+                <div class="jrpg-status-screen">
+                    
+                    <!-- BANDEAU SUPÉRIEUR / TITRE DE LA FICHE -->
+                    <div class="jrpg-screen-titlebar">
+                        <span class="jrpg-titlebar-gem">◆</span>
+                        <span class="jrpg-titlebar-text">FICHE DE STATUT • JRPG CHARACTER SHEET</span>
+                        <span class="jrpg-titlebar-gem">◆</span>
+                    </div>
+
+                    <div class="jrpg-status-body">
+                        <!-- ================= COLONNE DE GAUCHE : IDENTITÉ & TÊTE DE L'AVATAR ================= -->
+                        <div class="jrpg-col-left">
+                            
+                            <!-- 1. En-tête : Nom du Joueur & Titre -->
+                            <div class="jrpg-box jrpg-box-header">
+                                <div class="jrpg-name-row">
+                                    <h2 class="jrpg-char-name" id="jrpgCharName">Aventurier</h2>
+                                    <button class="jrpg-name-edit-btn" id="jrpgEditNameBtn" title="Renommer le personnage">✎</button>
+                                </div>
+                                <div class="jrpg-char-sub" id="jrpgClassTag">Novice des Prairies</div>
+                            </div>
+
+                            <!-- 2. Portrait de l'Avatar (Personnage Complet Plein Pied) -->
+                            <div class="jrpg-box jrpg-portrait-box" id="jrpgPortraitContainer">
+                                <div class="jrpg-portrait-bg-glow"></div>
+                                <div class="jrpg-avatar-crop-wrapper">
+                                    <img src="assets/img/player.png" alt="Aventurier" class="jrpg-hero-img is-player-sprite" id="jrpgHeroImg">
+                                </div>
+                                <button class="jrpg-change-avatar-btn" id="jrpgChangeAvatarBtn">
+                                    <img src="assets/img/fairy.png" class="btn-fairy-icon" alt=""> Modifier l'avatar
+                                </button>
+                            </div>
+
+                        </div>
+
+                        <!-- ================= COLONNE DE DROITE : STATS & ARCS ================= -->
+                        <div class="jrpg-col-right">
+                            
+                            <!-- 1. Niveau & Expérience Globale -->
+                            <div class="jrpg-box jrpg-level-box">
+                                <div class="jrpg-lvl-header">
+                                    <span class="jrpg-lvl-label">NIVEAU</span>
+                                    <span class="jrpg-lvl-val" id="jrpgLevelVal">1</span>
+                                </div>
+                                <div class="jrpg-exp-row">
+                                    <span class="jrpg-exp-label">EXP</span>
+                                    <div class="jrpg-exp-bar-frame">
+                                        <div class="jrpg-exp-bar-fill" id="jrpgExpFill" style="width: 40%;"></div>
+                                    </div>
+                                    <span class="jrpg-exp-val"><strong id="jrpgCurrXp">40</strong> / <span id="jrpgMaxXp">100</span> XP (<span id="jrpgXpPct">40</span>%)</span>
+                                </div>
+                            </div>
+
+                            <!-- 2. Profil & Statistiques Intégrées -->
+                            <div class="jrpg-box jrpg-profile-box" id="jrpgProfileBox">
+                                <div class="jrpg-section-title">
+                                    <span>Profil & Statistiques</span>
+                                    <div class="jrpg-title-line"></div>
+                                </div>
+                                <div class="jrpg-profile-grid">
+                                    <div class="profile-field">
+                                        <span class="pf-label">Rang</span>
+                                        <span class="pf-val" id="jrpgRankName">Bronze (Novice)</span>
+                                    </div>
+                                    <div class="profile-field">
+                                        <span class="pf-label">Quêtes Validées</span>
+                                        <span class="pf-val"><strong id="jrpgQuestsDone">4</strong> accomplies</span>
+                                    </div>
+                                    <div class="profile-field">
+                                        <span class="pf-label">Pièces d'Or</span>
+                                        <span class="pf-val"><strong id="jrpgGoldAmount">45</strong> Or</span>
+                                    </div>
+                                    <div class="profile-field">
+                                        <span class="pf-label">Série Active</span>
+                                        <span class="pf-val" id="jrpgStreakVal">3 jours</span>
+                                    </div>
+                                    <div class="profile-field">
+                                        <span class="pf-label">Boss Vaincus</span>
+                                        <span class="pf-val" id="jrpgBossVal">1 vaincu</span>
+                                    </div>
+                                    <div class="profile-field">
+                                        <span class="pf-label">Âge</span>
+                                        <span class="pf-val">24 ans</span>
+                                    </div>
+                                    <div class="profile-field full-width">
+                                        <span class="pf-label">Aime</span>
+                                        <span class="pf-val">Grand air, café corsé, résoudre des quêtes</span>
+                                    </div>
+                                    <div class="profile-field full-width">
+                                        <span class="pf-label">N'aime pas</span>
+                                        <span class="pf-val">Procrastination, notifications inutiles, bugs</span>
+                                    </div>
+                                    <div class="profile-field full-width">
+                                        <span class="pf-label">Spécialité</span>
+                                        <span class="pf-val">Résilience (+10% EXP sur les séries de quêtes)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 3. Arcs de Vie (Seul système de progression conservé) -->
+                            <div class="jrpg-box jrpg-arcs-box">
+                                <div class="jrpg-section-title">
+                                    <span>Progression des Arcs de Vie</span>
+                                    <div class="jrpg-title-line"></div>
+                                </div>
+                                <div class="jrpg-arcs-bars-grid" id="jrpgArcsBarsList">
+                                    <!-- Rempli dynamiquement par renderArcsGrid() -->
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- BARRE DE CONTRÔLEUR JRPG EN BAS DE FICHE -->
+                    <div class="jrpg-controller-footer">
+                        <button class="jrpg-footer-btn" id="footerBackToQuestsBtn">
+                            <span class="controller-key">L1 / R1</span>
+                            <span>Tableau des Quêtes</span>
+                        </button>
+                        <button class="jrpg-footer-btn" id="footerEditAvatarBtn">
+                            <span class="controller-key">✕</span>
+                            <span>Modifier l'Avatar</span>
+                        </button>
+                        <button class="jrpg-footer-btn" id="footerResetBtn">
+                            <span class="controller-key">△</span>
+                            <span>Réinitialiser Démo</span>
+                        </button>
+                        <button class="jrpg-footer-btn primary-action" id="footerNewQuestBtn">
+                            <span class="controller-key">◯</span>
+                            <span>+ Proclamer une Quête</span>
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- 2. SECTION DES TROPHÉES & SUCCÈS DÉBLOQUÉS (SOUS LA FEUILLE DE STATUT) -->
+                <div class="achievements-section-card jrpg-achievements-container">
+                    <div class="achieve-header">
+                        <h3 class="achieve-title-retro"><img src="assets/img/crown_pixel_art.png" class="inline-pixel-icon" alt=""> TROPHÉES & SUCCÈS DÉBLOQUÉS</h3>
+                        <span class="achieve-count-badge" id="achievementsCountBadge">3 / 6 Débloqués</span>
+                    </div>
+                    <div class="achievements-grid" id="achievementsGrid">
+                        <!-- Rendu dynamique par script.js -->
+                    </div>
+                </div>
+
+            </section>
+
+        </div>
+
+        <!-- ==============================================================
+             COLONNE DE DROITE (SIDEBAR CODÉDEX) : PROFIL, DÉFI DU MOIS, ARCS
+             ============================================================== -->
+        <aside class="codedex-side-col">
+
+            <!-- WIDGET 1 : PROFIL UTILISATEUR CODÉDEX -->
+            <div class="codedex-sidebar-card">
+                <div class="codedex-user-header">
+                    <img src="assets/img/codedex_boy.png" alt="Avatar" id="sideAvatarImg" class="codedex-user-avatar">
+                    <div class="codedex-user-info">
+                        <span class="codedex-user-name" id="sidePlayerName">Aventurier</span>
+                        <span class="codedex-user-level">Niveau <span id="sidePlayerLvl">1</span> • <span id="sidePlayerTitle">Novice</span></span>
+                        <button class="codedex-edit-link" id="sideEditProfileBtn">Modifier l'avatar ✎</button>
+                    </div>
+                </div>
+
+                <!-- Grille 2x2 des Statistiques Rétro (XP, Rang, Quêtes, Série) -->
+                <div class="codedex-stats-grid-2x2">
+                    <div class="codedex-stat-cell">
+                        <img src="assets/img/etoile_pixel_art.png" class="stat-icon-img" alt="">
+                        <div class="stat-meta">
+                            <strong class="stat-val" id="sideTotalXp">40</strong>
+                            <span class="stat-lbl">Total XP</span>
+                        </div>
+                    </div>
+                    <div class="codedex-stat-cell">
+                        <img src="assets/img/bouclier_1.svg" class="stat-icon-img" alt="">
+                        <div class="stat-meta">
+                            <strong class="stat-val" id="sideRankName">Bronze</strong>
+                            <span class="stat-lbl">Rang</span>
+                        </div>
+                    </div>
+                    <div class="codedex-stat-cell">
+                        <img src="assets/img/questpaper.png" class="stat-icon-img" alt="">
+                        <div class="stat-meta">
+                            <strong class="stat-val" id="sideQuestsCount">4</strong>
+                            <span class="stat-lbl">Quêtes</span>
+                        </div>
+                    </div>
+                    <div class="codedex-stat-cell">
+                        <img src="assets/img/flame_pixel_art.png" class="stat-icon-img" alt="">
+                        <div class="stat-meta">
+                            <strong class="stat-val" id="sideStreakDays">3 j</strong>
+                            <span class="stat-lbl">Série</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Jauge d'XP vers le prochain niveau -->
+                <div class="side-xp-progress-wrap" style="margin-bottom: 16px;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:#94a3b8; margin-bottom:6px;">
+                        <span>Niv. Suivant</span>
+                        <span><strong id="sideCurrentXp">40</strong>/<span id="sideMaxXp">100</span> XP</span>
+                    </div>
+                    <div class="side-xp-track" style="height:8px; background:#141b3d; border-radius:4px; overflow:hidden;">
+                        <div id="sideXpFill" style="height:100%; width:40%; background:linear-gradient(90deg, #38bdf8, #2563eb); border-radius:4px;"></div>
+                    </div>
+                </div>
+
+                <button class="codedex-btn-dark full-width" id="sideViewProfileBtn">
+                    Voir Profil & Arcs de Vie
+                </button>
+            </div>
+
+            <!-- WIDGET 2 : DÉFI DU MOIS & BOSS (CODÉDEX ENTER THE MONTHLY CHALLENGE) -->
+            <div class="codedex-sidebar-card">
+                <div class="challenge-title">Enter the Monthly Challenge</div>
+                <div class="challenge-banner-wrap">
+                    <img src="assets/img/banner_montage.jpeg" alt="Monthly Challenge">
+                </div>
+                <div class="challenge-desc">
+                    <strong>👑 Boss : Terrasser Life RPG V2</strong><br>
+                    <span style="font-size:0.74rem; color:#94a3b8;">📅 Échéance : 31 Octobre 2026 • 118 participations</span>
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:#f59e0b; margin-bottom:4px;">
+                        <span>Étape 2/3</span>
+                        <span>PV Boss : 67%</span>
+                    </div>
+                    <div style="height:8px; background:#141b3d; border-radius:4px; overflow:hidden;">
+                        <div style="height:100%; width:67%; background:linear-gradient(90deg, #f59e0b, #ef4444); border-radius:4px;"></div>
+                    </div>
+                </div>
+                <button class="codedex-btn-dark full-width" id="sideJoinChallengeBtn">
+                    Join the challenge
+                </button>
+            </div>
+
+            <!-- WIDGET 3 : MINI ARCS DE VIE (COMPÉTENCES RPG) -->
+            <div class="codedex-sidebar-card">
+                <div class="challenge-title" style="margin-bottom:14px;">Arcs de Vie (Compétences)</div>
+                <div id="sideArcsMiniList" style="display:flex; flex-direction:column; gap:12px;">
+                    <!-- Rendu dynamique dans script.js -->
+                </div>
+            </div>
+
+        </aside>
+
+    </main>
+
+    <!-- ======================================================================
+         4. PIED DE PAGE MODERNE ÉPURÉ
+         ====================================================================== -->
+    <footer class="modern-footer">
+        <div class="footer-content">
+            <div class="footer-brand-side">
+                <span class="footer-logo"><img src="assets/img/tableau_des_quetes.png" class="footer-pixel-img" alt=""> Life RPG</span>
+                <span class="footer-desc">Gamification personnelle • Direction Artistique Hybride Lumineuse</span>
+            </div>
+            <div class="footer-actions-side">
+                <span>Stack 100% HTML5 / CSS3 / JavaScript Vanille</span>
+                <span class="footer-divider">•</span>
+                <button class="btn-text-danger" id="resetDataBtn">🔄 Réinitialiser les données de démo</button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ======================================================================
+         5. MODALES ET BOÎTES DE DIALOGUE MODERNES
+         ====================================================================== -->
+
+    <!-- MODALE : CRÉATION D'UNE QUÊTE -->
+    <div class="modal-backdrop-blur" id="newQuestModal" role="dialog" aria-modal="true" style="display: none;">
+        <div class="modern-modal-card">
+            <div class="modal-header-row">
+                <div class="modal-title-wrap">
+                    <span class="modal-icon-badge">
+                        <img src="assets/img/questpaper.png" class="brand-pixel-img" alt="">
+                    </span>
+                    <h3 class="modal-title">Nouvelle Quête de Vie</h3>
+                </div>
+                <button class="modal-close-btn" id="closeNewQuestModalBtn" aria-label="Fermer">✕</button>
+            </div>
+
+            <form id="newQuestForm" class="modern-form">
+                <div class="form-group">
+                    <label for="questTitleInput" class="form-label">Intitulé de l'Objectif</label>
+                    <input type="text" id="questTitleInput" required placeholder="Ex: Coder 45 minutes, Courir 5km, Boire 1.5L d'eau..." class="modern-input" maxlength="60">
+                </div>
+
+                <div class="form-group">
+                    <label for="questDescInput" class="form-label">Description ou Détails (optionnel)</label>
+                    <textarea id="questDescInput" rows="2" placeholder="Conditions de réussite, notes ou motivations..." class="modern-input modern-textarea" maxlength="200"></textarea>
+                </div>
+
+                <div class="form-two-cols">
+                    <div class="form-group">
+                        <label for="questTypeSelect" class="form-label">Type d'Objectif</label>
+                        <select id="questTypeSelect" class="modern-select">
+                            <option value="daily">🌱 Habitude / Quotidien (répétable)</option>
+                            <option value="unique" selected>📜 Quête Unique (tâche simple)</option>
+                            <option value="boss">👑 Combat de Boss / Grand Palier</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="questRankSelect" class="form-label">Difficulté & Récompenses</label>
+                        <select id="questRankSelect" class="modern-select">
+                            <option value="D">Rang D (+10 XP, +5 🪙)</option>
+                            <option value="C">Rang C (+25 XP, +15 🪙)</option>
+                            <option value="B" selected>Rang B (+50 XP, +30 🪙)</option>
+                            <option value="A">Rang A (+100 XP, +75 🪙)</option>
+                            <option value="S">Rang S (+250 XP, +200 🪙)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Attribution à un Arc de Vie -->
+                <div class="form-group">
+                    <label class="form-label">Arc de Vie Concerné (Fait progresser l'Arc correspondant !)</label>
+                    <div class="quick-tags-container">
+                        <div class="quick-tag-pills" id="quickTagButtons">
+                            <button type="button" class="qtag-pill active" data-tag="Santé"><img src="assets/img/sprout_pixelart.png" class="qtag-mini-icon" alt=""> Santé</button>
+                            <button type="button" class="qtag-pill" data-tag="Code"><img src="assets/img/questpaper.png" class="qtag-mini-icon" alt=""> Code</button>
+                            <button type="button" class="qtag-pill" data-tag="Social"><img src="assets/img/taverne_1.svg" class="qtag-mini-icon" alt=""> Social</button>
+                            <button type="button" class="qtag-pill" data-tag="Créativité"><img src="assets/img/livre_1.svg" class="qtag-mini-icon" alt=""> Créativité</button>
+                            <button type="button" class="qtag-pill" data-tag="Aventure"><img src="assets/img/bouclier_1.svg" class="qtag-mini-icon" alt=""> Aventure</button>
+                        </div>
+                        <input type="text" id="customTagInput" placeholder="Ou saisis un nouvel Arc personnalisé..." class="modern-input input-sm">
+                    </div>
+                </div>
+
+                <!-- Champ spécifique pour les Boss -->
+                <div class="form-group" id="bossStagesGroup" style="display: none;">
+                    <label for="bossStagesInput" class="form-label">Nombre d'Étapes / PV du Boss (2 à 10)</label>
+                    <input type="number" id="bossStagesInput" min="2" max="10" value="3" class="modern-input">
+                </div>
+
+                <div class="modal-footer-row">
+                    <button type="button" class="btn-secondary-white" id="cancelNewQuestBtn">Annuler</button>
+                    <button type="submit" class="btn-primary-mint">
+                        <span>Graver la Quête</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODALE : CÉLÉBRATION LEVEL UP (JOUEUR OU ARC) -->
+    <div class="modal-backdrop-blur" id="levelUpModal" role="dialog" aria-modal="true" style="display: none;">
+        <div class="modern-modal-card celebration-card">
+            <div class="celebration-badge-gold" id="modalLevelTypeBadge"><img src="assets/img/etoile_pixel_art.png" class="kicker-pixel-star" alt=""> NIVEAU SUPÉRIEUR ! <img src="assets/img/etoile_pixel_art.png" class="kicker-pixel-star" alt=""></div>
+            
+            <div class="giant-level-circle">
+                <span class="circle-kicker">NIVEAU</span>
+                <span class="circle-number" id="modalNewLevel">2</span>
+            </div>
+
+            <h3 class="celebration-title" id="modalNewTitle">Explorateur des Plaines</h3>
+            <p class="celebration-text" id="modalCongratsText">
+                Félicitations Aventurier ! Tes efforts et ta détermination portent leurs fruits dans le monde réel.
+            </p>
+
+            <div class="rewards-recap-box" id="modalRewardsBox">
+                <div class="recap-item" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <svg class="pixel-art-svg" width="16" height="16" viewBox="0 0 16 16"><path fill="#f59e0b" d="M4 1h8v1H4zM2 2h2v1H2zM12 2h2v1h-2zM1 3h1v2H1zM14 3h1v2h-1zM0 5h1v6H0zM15 5h1v6h-1zM1 11h1v2H1zM14 11h1v2h-1zM2 13h2v1H2zM12 13h2v1h-2zM4 14h8v1H4z"/><path fill="#fef08a" d="M4 2h8v2H4zM2 4h3v8H2zM4 12h8v2H4z"/><path fill="#fbbf24" d="M5 4h6v8H5z"/><path fill="#d97706" d="M11 4h3v8h-3zM7 6h2v4H7z"/></svg>
+                    <span>+50 Pièces d'Or bonus</span>
+                </div>
+                <div class="recap-item" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <svg class="pixel-art-svg" width="16" height="16" viewBox="0 0 16 16"><path fill="#38bdf8" d="M9 1h4v4H9zM7 5h4v3H7zM4 8h5v2H4zM6 10h4v2H6zM7 12h3v3H7z"/></svg>
+                    <span>Jauge d'Énergie & Endurance restaurées</span>
+                </div>
+            </div>
+
+            <button class="btn-primary-mint full-width" id="closeLevelUpModalBtn">
+                <span>Poursuivre l'Aventure !</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- MODALE : SÉLECTEUR D'AVATAR -->
+    <div class="modal-backdrop-blur" id="avatarModal" role="dialog" aria-modal="true" style="display: none;">
+        <div class="modern-modal-card" style="max-width: 480px;">
+            <div class="modal-header-row">
+                <div class="modal-title-wrap">
+                    <span class="modal-icon-badge">
+                        <svg class="pixel-art-svg" width="22" height="22" viewBox="0 0 16 16"><path fill="#6366f1" d="M5 2h6v2H5zM4 4h8v2H4zM3 6h10v2H3z"/><path fill="#ffd8a8" d="M5 8h6v4H5z"/><path fill="#1e1b4b" d="M6 9h1v1H6zM9 9h1v1H9z"/><path fill="#4338ca" d="M3 12h10v4H3z"/></svg>
+                    </span>
+                    <h3 class="modal-title">Choix de ton Avatar</h3>
+                </div>
+                <button class="modal-close-btn" id="closeAvatarModalBtn">✕</button>
+            </div>
+            
+            <p class="modal-instruction">Sélectionne l'apparence de ton aventurier :</p>
+            <div class="avatar-cards-grid" id="avatarSelectionGrid"></div>
+
+            <div class="modal-footer-row">
+                <button type="button" class="btn-primary-mint full-width" id="saveAvatarBtn">Valider l'Apparence</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE : STATUT & CONFIGURATION SUPABASE CLOUD -->
+    <div class="modal-backdrop-blur" id="supabaseConfigModal" role="dialog" aria-modal="true" style="display: none;">
+        <div class="modern-modal-card" style="max-width: 520px;">
+            <div class="modal-header-row">
+                <div class="modal-title-wrap">
+                    <span class="modal-icon-badge">
+                        <img src="assets/img/sprout_pixelart.png" class="achieve-pixel-img" alt="Database">
+                    </span>
+                    <h3 class="modal-title">Cloud Supabase & Données</h3>
+                </div>
+                <button class="modal-close-btn" id="closeSupabaseModalBtn">✕</button>
+            </div>
+            
+            <div class="supabase-modal-body" style="padding-top: 10px;">
+                <div class="sync-info-box">
+                    <div class="sync-info-row">
+                        <span class="sync-info-label">Statut Supabase :</span>
+                        <span class="sync-info-val" id="supabaseModalStatusBadge">Vérification...</span>
+                    </div>
+                    <div class="sync-info-row">
+                        <span class="sync-info-label">URL configurée :</span>
+                        <span class="sync-info-val mono-url" id="supabaseModalUrl">http://127.0.0.1:54321</span>
+                    </div>
+                    <div class="sync-info-row">
+                        <span class="sync-info-label">Dernière synchro :</span>
+                        <span class="sync-info-val" id="supabaseModalLastSync">Jamais</span>
+                    </div>
+                </div>
+
+                <div class="supabase-manual-config" style="margin-top: 16px;">
+                    <label class="form-label" style="font-size: 0.82rem; font-weight: 600;">URL Supabase (Projet Cloud ou Local CLI) :</label>
+                    <input type="text" id="supabaseCustomUrlInput" class="form-input" placeholder="https://votrenom.supabase.co ou http://127.0.0.1:54321" style="margin-top: 4px; font-family: monospace; font-size: 0.85rem;">
+                    
+                    <label class="form-label" style="margin-top: 12px; font-size: 0.82rem; font-weight: 600;">Clé Anonyme Publique (anon key) :</label>
+                    <input type="password" id="supabaseCustomKeyInput" class="form-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="margin-top: 4px; font-family: monospace; font-size: 0.85rem;">
+                </div>
+
+                <p style="margin-top: 12px; font-size: 0.78rem; line-height: 1.4; color: var(--text-secondary);">
+                    💡 <strong>Sur Vercel :</strong> configurez <code>NEXT_PUBLIC_SUPABASE_URL</code> et <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> dans les paramètres Vercel.<br>
+                    💻 <strong>En local (Docker) :</strong> lancez <code>supabase start</code> pour démarrer PostgreSQL et l'API sur <code>127.0.0.1:54321</code>.
+                </p>
+
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 18px;">
+                    <button type="button" class="btn-primary-mint" id="supabaseTestAndSaveBtn">Tester la connexion</button>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn-secondary-outline" id="supabaseForcePushBtn" style="flex: 1; font-size: 0.75rem;" title="Transférer toutes les quêtes et stats locales vers Supabase">Envoyer vers Cloud</button>
+                        <button type="button" class="btn-secondary-outline" id="supabaseForcePullBtn" style="flex: 1; font-size: 0.75rem;" title="Télécharger les données depuis Supabase">Charger du Cloud</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client Supabase Officiel via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Couche de synchronisation hybride Supabase / Offline-first -->
+    <script src="supabaseClient.js"></script>
+    <!-- Moteur JavaScript Vanille -->
+    <script src="script.js"></script>
+</body>
+</html>
